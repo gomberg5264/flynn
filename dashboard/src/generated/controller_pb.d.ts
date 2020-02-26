@@ -435,14 +435,37 @@ export namespace UpdateAppRequest {
   }
 }
 
-export class CreateScaleRequest extends jspb.Message {
-  getParent(): string;
-  setParent(value: string): void;
-
+export class ScaleConfig extends jspb.Message {
   getProcessesMap(): jspb.Map<string, number>;
   clearProcessesMap(): void;
   getTagsMap(): jspb.Map<string, DeploymentProcessTags>;
   clearTagsMap(): void;
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): ScaleConfig.AsObject;
+  static toObject(includeInstance: boolean, msg: ScaleConfig): ScaleConfig.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: ScaleConfig, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ScaleConfig;
+  static deserializeBinaryFromReader(message: ScaleConfig, reader: jspb.BinaryReader): ScaleConfig;
+}
+
+export namespace ScaleConfig {
+  export type AsObject = {
+    processesMap: Array<[string, number]>,
+    tagsMap: Array<[string, DeploymentProcessTags.AsObject]>,
+  }
+}
+
+export class CreateScaleRequest extends jspb.Message {
+  getParent(): string;
+  setParent(value: string): void;
+
+  hasConfig(): boolean;
+  clearConfig(): void;
+  getConfig(): ScaleConfig | undefined;
+  setConfig(value?: ScaleConfig): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): CreateScaleRequest.AsObject;
   static toObject(includeInstance: boolean, msg: CreateScaleRequest): CreateScaleRequest.AsObject;
@@ -456,8 +479,7 @@ export class CreateScaleRequest extends jspb.Message {
 export namespace CreateScaleRequest {
   export type AsObject = {
     parent: string,
-    processesMap: Array<[string, number]>,
-    tagsMap: Array<[string, DeploymentProcessTags.AsObject]>,
+    config?: ScaleConfig.AsObject,
   }
 }
 
@@ -491,9 +513,44 @@ export namespace CreateReleaseRequest {
   }
 }
 
+export class DeploymentConfig extends jspb.Message {
+  getTimeout(): number;
+  setTimeout(value: number): void;
+
+  getBatchSize(): number;
+  setBatchSize(value: number): void;
+
+  hasScaleConfig(): boolean;
+  clearScaleConfig(): void;
+  getScaleConfig(): ScaleConfig | undefined;
+  setScaleConfig(value?: ScaleConfig): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): DeploymentConfig.AsObject;
+  static toObject(includeInstance: boolean, msg: DeploymentConfig): DeploymentConfig.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: DeploymentConfig, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): DeploymentConfig;
+  static deserializeBinaryFromReader(message: DeploymentConfig, reader: jspb.BinaryReader): DeploymentConfig;
+}
+
+export namespace DeploymentConfig {
+  export type AsObject = {
+    timeout: number,
+    batchSize: number,
+    scaleConfig?: ScaleConfig.AsObject,
+  }
+}
+
 export class CreateDeploymentRequest extends jspb.Message {
   getParent(): string;
   setParent(value: string): void;
+
+  hasConfig(): boolean;
+  clearConfig(): void;
+  getConfig(): DeploymentConfig | undefined;
+  setConfig(value?: DeploymentConfig): void;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): CreateDeploymentRequest.AsObject;
@@ -506,6 +563,27 @@ export class CreateDeploymentRequest extends jspb.Message {
 }
 
 export namespace CreateDeploymentRequest {
+  export type AsObject = {
+    parent: string,
+    config?: DeploymentConfig.AsObject,
+  }
+}
+
+export class StreamDeploymentEventsRequest extends jspb.Message {
+  getParent(): string;
+  setParent(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): StreamDeploymentEventsRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: StreamDeploymentEventsRequest): StreamDeploymentEventsRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: StreamDeploymentEventsRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): StreamDeploymentEventsRequest;
+  static deserializeBinaryFromReader(message: StreamDeploymentEventsRequest, reader: jspb.BinaryReader): StreamDeploymentEventsRequest;
+}
+
+export namespace StreamDeploymentEventsRequest {
   export type AsObject = {
     parent: string,
   }
@@ -1073,6 +1151,9 @@ export class ExpandedDeployment extends jspb.Message {
   getEndTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
   setEndTime(value?: google_protobuf_timestamp_pb.Timestamp): void;
 
+  getError(): string;
+  setError(value: string): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ExpandedDeployment.AsObject;
   static toObject(includeInstance: boolean, msg: ExpandedDeployment): ExpandedDeployment.AsObject;
@@ -1097,44 +1178,92 @@ export namespace ExpandedDeployment {
     createTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
     expireTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
     endTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+    error: string,
   }
 }
 
-export class DeploymentEvent extends jspb.Message {
+export class Job extends jspb.Message {
   getParent(): string;
   setParent(value: string): void;
 
-  getJobType(): string;
-  setJobType(value: string): void;
+  getName(): string;
+  setName(value: string): void;
 
-  getJobState(): DeploymentEvent.JobStateMap[keyof DeploymentEvent.JobStateMap];
-  setJobState(value: DeploymentEvent.JobStateMap[keyof DeploymentEvent.JobStateMap]): void;
+  getDeploymentName(): string;
+  setDeploymentName(value: string): void;
 
-  getError(): string;
-  setError(value: string): void;
+  getHostName(): string;
+  setHostName(value: string): void;
+
+  getType(): string;
+  setType(value: string): void;
+
+  getState(): Job.JobStateMap[keyof Job.JobStateMap];
+  setState(value: Job.JobStateMap[keyof Job.JobStateMap]): void;
+
+  clearArgsList(): void;
+  getArgsList(): Array<string>;
+  setArgsList(value: Array<string>): void;
+  addArgs(value: string, index?: number): string;
+
+  clearVolumeIdsList(): void;
+  getVolumeIdsList(): Array<string>;
+  setVolumeIdsList(value: Array<string>): void;
+  addVolumeIds(value: string, index?: number): string;
+
+  getLabelsMap(): jspb.Map<string, string>;
+  clearLabelsMap(): void;
+  getExitStatus(): number;
+  setExitStatus(value: number): void;
+
+  getHostError(): string;
+  setHostError(value: string): void;
+
+  hasRunTime(): boolean;
+  clearRunTime(): void;
+  getRunTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setRunTime(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
+  getRestarts(): number;
+  setRestarts(value: number): void;
 
   hasCreateTime(): boolean;
   clearCreateTime(): void;
   getCreateTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
   setCreateTime(value?: google_protobuf_timestamp_pb.Timestamp): void;
 
+  hasUpdateTime(): boolean;
+  clearUpdateTime(): void;
+  getUpdateTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setUpdateTime(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): DeploymentEvent.AsObject;
-  static toObject(includeInstance: boolean, msg: DeploymentEvent): DeploymentEvent.AsObject;
+  toObject(includeInstance?: boolean): Job.AsObject;
+  static toObject(includeInstance: boolean, msg: Job): Job.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: DeploymentEvent, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): DeploymentEvent;
-  static deserializeBinaryFromReader(message: DeploymentEvent, reader: jspb.BinaryReader): DeploymentEvent;
+  static serializeBinaryToWriter(message: Job, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): Job;
+  static deserializeBinaryFromReader(message: Job, reader: jspb.BinaryReader): Job;
 }
 
-export namespace DeploymentEvent {
+export namespace Job {
   export type AsObject = {
     parent: string,
-    jobType: string,
-    jobState: DeploymentEvent.JobStateMap[keyof DeploymentEvent.JobStateMap],
-    error: string,
+    name: string,
+    deploymentName: string,
+    hostName: string,
+    type: string,
+    state: Job.JobStateMap[keyof Job.JobStateMap],
+    argsList: Array<string>,
+    volumeIdsList: Array<string>,
+    labelsMap: Array<[string, string]>,
+    exitStatus: number,
+    hostError: string,
+    runTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+    restarts: number,
     createTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+    updateTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
   }
 
   export interface JobStateMap {
@@ -1142,13 +1271,80 @@ export namespace DeploymentEvent {
     BLOCKED: 1;
     STARTING: 2;
     UP: 3;
-    STOPPING: 5;
-    DOWN: 6;
-    CRASHED: 7;
-    FAILED: 8;
+    STOPPING: 4;
+    DOWN: 5;
   }
 
   export const JobState: JobStateMap;
+}
+
+export class Event extends jspb.Message {
+  getParent(): string;
+  setParent(value: string): void;
+
+  getName(): string;
+  setName(value: string): void;
+
+  getDeploymentName(): string;
+  setDeploymentName(value: string): void;
+
+  getType(): string;
+  setType(value: string): void;
+
+  getOp(): Event.EventOpMap[keyof Event.EventOpMap];
+  setOp(value: Event.EventOpMap[keyof Event.EventOpMap]): void;
+
+  hasCreateTime(): boolean;
+  clearCreateTime(): void;
+  getCreateTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
+  setCreateTime(value?: google_protobuf_timestamp_pb.Timestamp): void;
+
+  hasDeployment(): boolean;
+  clearDeployment(): void;
+  getDeployment(): ExpandedDeployment | undefined;
+  setDeployment(value?: ExpandedDeployment): void;
+
+  hasJob(): boolean;
+  clearJob(): void;
+  getJob(): Job | undefined;
+  setJob(value?: Job): void;
+
+  getDataCase(): Event.DataCase;
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): Event.AsObject;
+  static toObject(includeInstance: boolean, msg: Event): Event.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: Event, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): Event;
+  static deserializeBinaryFromReader(message: Event, reader: jspb.BinaryReader): Event;
+}
+
+export namespace Event {
+  export type AsObject = {
+    parent: string,
+    name: string,
+    deploymentName: string,
+    type: string,
+    op: Event.EventOpMap[keyof Event.EventOpMap],
+    createTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
+    deployment?: ExpandedDeployment.AsObject,
+    job?: Job.AsObject,
+  }
+
+  export interface EventOpMap {
+    ANY: 0;
+    CREATE: 1;
+    UPDATE: 2;
+  }
+
+  export const EventOp: EventOpMap;
+
+  export enum DataCase {
+    DATA_NOT_SET = 0,
+    DEPLOYMENT = 7,
+    JOB = 8,
+  }
 }
 
 export interface ReleaseTypeMap {

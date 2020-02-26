@@ -529,20 +529,22 @@ const (
 )
 
 type Event struct {
-	ID         int64           `json:"id,omitempty"`
-	AppID      string          `json:"app,omitempty"`
-	ObjectType EventType       `json:"object_type,omitempty"`
-	ObjectID   string          `json:"object_id,omitempty"`
-	UniqueID   string          `json:"-"`
-	Data       json.RawMessage `json:"data,omitempty"`
-	Op         EventOp         `json:"-"`
-	CreatedAt  *time.Time      `json:"created_at,omitempty"`
+	ID           int64           `json:"id,omitempty"`
+	AppID        string          `json:"app,omitempty"`
+	DeploymentID string          `json:"deployment_id,omitempty"`
+	ObjectType   EventType       `json:"object_type,omitempty"`
+	ObjectID     string          `json:"object_id,omitempty"`
+	UniqueID     string          `json:"-"`
+	Data         json.RawMessage `json:"data,omitempty"`
+	Op           EventOp         `json:"-"`
+	CreatedAt    *time.Time      `json:"created_at,omitempty"`
 }
 
 type ScaleRequest struct {
 	ID           string                        `json:"id"`
 	AppID        string                        `json:"app"`
 	ReleaseID    string                        `json:"release"`
+	DeploymentID string                        `json:"deployment_id,omitempty"`
 	State        ScaleRequestState             `json:"state"`
 	OldProcesses map[string]int                `json:"old_processes,omitempty"`
 	NewProcesses *map[string]int               `json:"new_processes,omitempty"`
@@ -567,6 +569,7 @@ type DeprecatedScale struct {
 }
 
 type ScaleOptions struct {
+	DeploymentID         string
 	Processes            map[string]int
 	Tags                 map[string]map[string]string
 	Timeout              *time.Duration

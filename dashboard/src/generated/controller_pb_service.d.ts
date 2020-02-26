@@ -83,7 +83,16 @@ type ControllerCreateDeployment = {
   readonly requestStream: false;
   readonly responseStream: true;
   readonly requestType: typeof controller_pb.CreateDeploymentRequest;
-  readonly responseType: typeof controller_pb.DeploymentEvent;
+  readonly responseType: typeof controller_pb.Event;
+};
+
+type ControllerStreamDeploymentEvents = {
+  readonly methodName: string;
+  readonly service: typeof Controller;
+  readonly requestStream: false;
+  readonly responseStream: true;
+  readonly requestType: typeof controller_pb.StreamDeploymentEventsRequest;
+  readonly responseType: typeof controller_pb.Event;
 };
 
 export class Controller {
@@ -97,6 +106,7 @@ export class Controller {
   static readonly CreateScale: ControllerCreateScale;
   static readonly CreateRelease: ControllerCreateRelease;
   static readonly CreateDeployment: ControllerCreateDeployment;
+  static readonly StreamDeploymentEvents: ControllerStreamDeploymentEvents;
 }
 
 export type ServiceError = { message: string, code: number; metadata: grpc.Metadata }
@@ -171,6 +181,7 @@ export class ControllerClient {
     requestMessage: controller_pb.CreateReleaseRequest,
     callback: (error: ServiceError|null, responseMessage: controller_pb.Release|null) => void
   ): UnaryResponse;
-  createDeployment(requestMessage: controller_pb.CreateDeploymentRequest, metadata?: grpc.Metadata): ResponseStream<controller_pb.DeploymentEvent>;
+  createDeployment(requestMessage: controller_pb.CreateDeploymentRequest, metadata?: grpc.Metadata): ResponseStream<controller_pb.Event>;
+  streamDeploymentEvents(requestMessage: controller_pb.StreamDeploymentEventsRequest, metadata?: grpc.Metadata): ResponseStream<controller_pb.Event>;
 }
 

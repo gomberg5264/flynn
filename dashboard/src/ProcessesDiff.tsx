@@ -8,7 +8,7 @@ import ProcessScale, {
 } from './ProcessScale';
 import protoMapDiff, { Diff, DiffOp, DiffOption } from './util/protoMapDiff';
 import buildProcessesMap from './util/buildProcessesMap';
-import { ScaleRequest, CreateScaleRequest, Release } from './generated/controller_pb';
+import { ScaleRequest, ScaleConfig, CreateScaleRequest, Release } from './generated/controller_pb';
 import useMergeDispatch from './useMergeDispatch';
 
 export enum ActionType {
@@ -53,7 +53,7 @@ function buildProcessesFullDiff(
 ): Diff<string, number> {
 	return protoMapDiff(
 		buildProcessesMap((scale || new ScaleRequest()).getNewProcessesMap(), release),
-		buildProcessesMap(nextScale.getProcessesMap(), release),
+		buildProcessesMap((nextScale.getConfig() || new ScaleConfig()).getProcessesMap(), release),
 		DiffOption.INCLUDE_UNCHANGED,
 		DiffOption.NO_DUPLICATE_KEYS
 	);

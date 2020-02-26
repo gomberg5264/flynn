@@ -38,6 +38,7 @@ import {
 	ReleaseType,
 	ReleaseTypeMap,
 	ScaleRequest,
+	ScaleConfig,
 	CreateScaleRequest
 } from './generated/controller_pb';
 import Loading from './Loading';
@@ -274,8 +275,10 @@ function reducer(prevState: State, actions: Action | Action[]): State {
 				nextState.isDeploying = true;
 				nextState.nextScale = ((s) => {
 					const nextScale = new CreateScaleRequest();
-					protoMapReplace(nextScale.getProcessesMap(), s.getNewProcessesMap());
-					protoMapReplace(nextScale.getTagsMap(), s.getNewTagsMap());
+					const cfg = new ScaleConfig();
+					protoMapReplace(cfg.getProcessesMap(), s.getNewProcessesMap());
+					protoMapReplace(cfg.getTagsMap(), s.getNewTagsMap());
+					nextScale.setConfig(cfg);
 					return nextScale;
 				})(action.scale);
 				return nextState;

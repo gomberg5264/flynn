@@ -62,6 +62,7 @@ var preparedStatements = map[string]string{
 	"scale_request_cancel":                  scaleRequestCancelQuery,
 	"scale_request_update":                  scaleRequestUpdateQuery,
 	"scale_request_list":                    scaleRequestListQuery,
+	"job_find_deployment":                   jobFindDeploymentQuery,
 	"job_list":                              jobListQuery,
 	"job_list_active":                       jobListActiveQuery,
 	"job_select":                            jobSelectQuery,
@@ -343,11 +344,11 @@ FROM events WHERE event_id = $1`
 INSERT INTO events (app_id, object_id, object_type, data)
 VALUES ($1, $2, $3, $4)`
 	eventInsertOpQuery = `
-INSERT INTO events (app_id, object_id, object_type, data, op)
-VALUES ($1, $2, $3, $4, $5)`
+INSERT INTO events (app_id, deployment_id, object_id, object_type, data, op)
+VALUES ($1, $2, $3, $4, $5, $6)`
 	eventInsertUniqueQuery = `
-INSERT INTO events (app_id, object_id, unique_id, object_type, data)
-VALUES ($1, $2, $3, $4, $5) ON CONFLICT (unique_id) DO NOTHING`
+INSERT INTO events (app_id, deployment_id, object_id, unique_id, object_type, data)
+VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (unique_id) DO NOTHING`
 	formationListByAppQuery = `
 SELECT app_id, release_id, processes, tags, created_at, updated_at
 FROM formations WHERE app_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC`
@@ -449,7 +450,7 @@ UPDATE formations SET deleted_at = now(), processes = NULL, updated_at = now()
 WHERE app_id = $1 AND deleted_at IS NULL`
 	scaleRequestInsertQuery = `
 INSERT INTO scale_requests (scale_request_id, app_id, release_id, state, old_processes, new_processes, old_tags, new_tags)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING created_at, updated_at`
 	scaleRequestCancelQuery = `
 WITH updated AS (
@@ -478,6 +479,16 @@ AND
 ORDER BY s.created_at DESC
 LIMIT $6
 `
+
+	jobFindDeploymentQuery = `
+SELECT deployment_id FROM deployments
+WHERE app_id = $1
+	AND (old_release_id = $2 OR new_release_id = $2)
+	AND deployment_status(deployment_id) IN ('pending', 'running')
+ORDER BY created_at DESC
+LIMIT 1
+	`
+
 	jobListQuery = `
 SELECT
   cluster_id, job_id, host_id, app_id, release_id, process_type, state, meta,

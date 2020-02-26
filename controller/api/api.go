@@ -583,8 +583,8 @@ func (req *ScaleRequest) ControllerType() *ct.ScaleRequest {
 func (csr *CreateScaleRequest) ControllerType() *ct.ScaleRequest {
 	return (&ScaleRequest{
 		Parent:       csr.Parent,
-		NewProcesses: csr.Processes,
-		NewTags:      csr.Tags,
+		NewProcesses: csr.Config.Processes,
+		NewTags:      csr.Config.Tags,
 	}).ControllerType()
 }
 
@@ -691,24 +691,20 @@ func NewExpandedDeployment(from *ct.ExpandedDeployment) *ExpandedDeployment {
 	}
 }
 
-func NewJobState(from ct.JobState) DeploymentEvent_JobState {
+func NewJobState(from ct.JobState) Job_JobState {
 	switch from {
 	case "pending":
-		return DeploymentEvent_PENDING
+		return Job_PENDING
 	case "blocked":
-		return DeploymentEvent_BLOCKED
+		return Job_BLOCKED
 	case "starting":
-		return DeploymentEvent_STARTING
+		return Job_STARTING
 	case "up":
-		return DeploymentEvent_UP
+		return Job_UP
 	case "stopping":
-		return DeploymentEvent_STOPPING
+		return Job_STOPPING
 	case "down":
-		return DeploymentEvent_DOWN
-	case "crashed":
-		return DeploymentEvent_CRASHED
-	case "failed":
-		return DeploymentEvent_FAILED
+		return Job_DOWN
 	}
-	return DeploymentEvent_PENDING
+	return Job_PENDING
 }

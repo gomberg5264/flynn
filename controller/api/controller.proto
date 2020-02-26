@@ -26,7 +26,9 @@ service Controller {
 
   rpc CreateRelease (CreateReleaseRequest) returns (Release) {};
 
-  rpc CreateDeployment (CreateDeploymentRequest) returns (stream DeploymentEvent) {};
+  rpc CreateDeployment (CreateDeploymentRequest) returns (stream Event) {};
+
+  rpc StreamDeploymentEvents (StreamDeploymentEventsRequest) returns (stream Event) {};
 }
 
 message StatusResponse {
@@ -226,13 +228,16 @@ message UpdateAppRequest {
   google.protobuf.FieldMask update_mask = 2;
 }
 
+message ScaleConfig {
+  map<string, int32> processes = 1;
+  map<string, DeploymentProcessTags> tags = 2;
+}
+
 message CreateScaleRequest {
   // parent = "apps/APP_ID/releases/RELEASE_ID"
   string parent = 1;
 
-  map<string, int32> processes = 2;
-
-  map<string, DeploymentProcessTags> tags = 3;
+  ScaleConfig config = 2;
 }
 
 message CreateReleaseRequest {
@@ -244,8 +249,23 @@ message CreateReleaseRequest {
   string request_id = 3;
 }
 
+message DeploymentConfig {
+  int32 timeout = 1;
+  int32 batch_size = 2;
+  ScaleConfig scale_config = 3;
+}
+
 message CreateDeploymentRequest {
   // parent = "apps/APP_ID/releases/RELEASE_ID"
+  string parent = 1;
+
+  DeploymentConfig config = 2;
+}
+
+message StreamDeploymentEventsRequest {
+  // parent = ""
+  // parent = "apps/APP_ID"
+  // parent = "apps/APP_ID/deployments/DEPLOYMENT_ID"
   string parent = 1;
 }
 
@@ -515,13 +535,25 @@ message ExpandedDeployment {
   google.protobuf.Timestamp expire_time = 12;
 
   google.protobuf.Timestamp end_time = 13;
+
+  string error = 14;
 }
 
-message DeploymentEvent {
-  // parent = "apps/APP_ID/deployments/DEPLOYMENT_ID"
+message Job {
+  // parent = "apps/APP_ID/releases/RELEASE_ID"
   string parent = 1;
 
-  string job_type = 2;
+  // name = "apps/APP_ID/releases/RELEASE_ID/jobs/UUID"
+  string name = 2;
+
+  // deployment_name = "apps/APP_ID/deployments/DEPLOYMENT_ID"
+  string deployment_name = 3;
+
+  // host = "hosts/HOST_ID"
+  // host may be empty if job is pending
+  string host_name = 4;
+
+  string type = 5;
 
   enum JobState {
     PENDING = 0;
@@ -532,21 +564,63 @@ message DeploymentEvent {
 
     UP = 3;
 
-    STOPPING = 5;
+    STOPPING = 4;
 
-    DOWN = 6;
-
-    // CRASHED and FAILURE are no longer valid job states,
-    // but we still need to handle them in case they are set by old
-    // schedulers still using the legacy code.
-    CRASHED = 7;
-
-    FAILED = 8;
+    DOWN = 5;
   }
 
-  JobState job_state = 3;
+  JobState state = 6;
 
-  string Error = 4;
+  repeated string args = 7;
 
-  google.protobuf.Timestamp create_time = 5;
+  repeated string volume_ids = 8;
+
+  map<string, string> labels = 9;
+
+  int32 exit_status = 10;
+
+  string host_error = 11;
+
+  google.protobuf.Timestamp run_time = 12;
+
+  int32 restarts = 13;
+
+  google.protobuf.Timestamp create_time = 14;
+
+  google.protobuf.Timestamp update_time = 15;
+}
+
+message Event {
+  // when deployment is set:
+  // parent = "apps/APP_ID/deployments/DEPLOYMENT_ID"
+  // when job is set:
+  // parent = "apps/APP_ID/releases/RELEASE_ID/jobs/UUID"
+  string parent = 1;
+
+  //  name = "events/EVENT_ID"
+  string name = 2;
+
+  // deployment_name = "apps/APP_ID/deployments/DEPLOYMENT_ID"
+  string deployment_name = 3;
+
+  // type = deployment | job
+  string type = 4;
+
+  enum EventOp {
+    ANY = 0;
+
+    CREATE = 1;
+
+    UPDATE = 2;
+  }
+
+  EventOp op = 5;
+
+  google.protobuf.Timestamp create_time = 6;
+
+  oneof data {
+    ExpandedDeployment deployment = 7;
+
+    Job job = 8;
+  }
 }

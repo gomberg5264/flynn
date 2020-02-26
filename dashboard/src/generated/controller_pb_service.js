@@ -89,7 +89,16 @@ Controller.CreateDeployment = {
   requestStream: false,
   responseStream: true,
   requestType: controller_pb.CreateDeploymentRequest,
-  responseType: controller_pb.DeploymentEvent
+  responseType: controller_pb.Event
+};
+
+Controller.StreamDeploymentEvents = {
+  methodName: "StreamDeploymentEvents",
+  service: Controller,
+  requestStream: false,
+  responseStream: true,
+  requestType: controller_pb.StreamDeploymentEventsRequest,
+  responseType: controller_pb.Event
 };
 
 exports.Controller = Controller;
@@ -386,6 +395,45 @@ ControllerClient.prototype.createDeployment = function createDeployment(requestM
     status: []
   };
   var client = grpc.invoke(Controller.CreateDeployment, {
+    request: requestMessage,
+    host: this.serviceHost,
+    metadata: metadata,
+    transport: this.options.transport,
+    debug: this.options.debug,
+    onMessage: function (responseMessage) {
+      listeners.data.forEach(function (handler) {
+        handler(responseMessage);
+      });
+    },
+    onEnd: function (status, statusMessage, trailers) {
+      listeners.status.forEach(function (handler) {
+        handler({ code: status, details: statusMessage, metadata: trailers });
+      });
+      listeners.end.forEach(function (handler) {
+        handler({ code: status, details: statusMessage, metadata: trailers });
+      });
+      listeners = null;
+    }
+  });
+  return {
+    on: function (type, handler) {
+      listeners[type].push(handler);
+      return this;
+    },
+    cancel: function () {
+      listeners = null;
+      client.close();
+    }
+  };
+};
+
+ControllerClient.prototype.streamDeploymentEvents = function streamDeploymentEvents(requestMessage, metadata) {
+  var listeners = {
+    data: [],
+    end: [],
+    status: []
+  };
+  var client = grpc.invoke(Controller.StreamDeploymentEvents, {
     request: requestMessage,
     host: this.serviceHost,
     metadata: metadata,

@@ -376,8 +376,8 @@ func (g *grpcAPI) UpdateApp(ctx context.Context, req *api.UpdateAppRequest) (*ap
 func (g *grpcAPI) createScale(req *api.CreateScaleRequest) (*api.ScaleRequest, error) {
 	appID := api.ParseIDFromName(req.Parent, "apps")
 	releaseID := api.ParseIDFromName(req.Parent, "releases")
-	processes := parseDeploymentProcesses(req.Processes)
-	tags := parseDeploymentTags(req.Tags)
+	processes := parseDeploymentProcesses(req.Config.Processes)
+	tags := parseDeploymentTags(req.Config.Tags)
 
 	sub, err := g.subscribeEvents([]string{appID}, []ct.EventType{ct.EventTypeScaleRequest, ct.EventTypeScaleRequestCancelation}, nil)
 	if err != nil {
@@ -860,6 +860,11 @@ func (g *grpcAPI) StreamDeployments(req *api.StreamDeploymentsRequest, stream ap
 	return maybeError(sub.Err)
 }
 
+func (g *grpcAPI) StreamDeploymentEvents(req *api.StreamDeploymentEventsRequest, srv api.Controller_StreamDeploymentEventsServer) error {
+	// TODO(jvatic): implement this method
+	return status.Errorf(codes.Unimplemented, "method StreamDeploymentEvents not implemented")
+}
+
 func parseDeploymentTags(from map[string]*api.DeploymentProcessTags) map[string]map[string]string {
 	to := make(map[string]map[string]string, len(from))
 	for k, v := range from {
@@ -906,12 +911,20 @@ func (g *grpcAPI) CreateDeployment(req *api.CreateDeploymentRequest, ds api.Cont
 			continue
 		}
 
-		ds.Send(&api.DeploymentEvent{
-			Parent:     fmt.Sprintf("apps/%s/deployments/%s", de.AppID, de.DeploymentID),
-			JobType:    de.JobType,
-			JobState:   api.NewJobState(de.JobState),
-			Error:      de.Error,
-			CreateTime: api.NewTimestamp(event.CreatedAt),
+		ed, err := g.deploymentRepo.GetExpanded(event.ObjectID)
+		if err != nil {
+			logger.Error("failed to fetch expanded deployment for event", "event_id", event.ID, "deployment_id", event.ObjectID, "error", err)
+			continue
+		}
+
+		deploymentName := fmt.Sprintf("apps/%s/deployments/%s", de.AppID, de.DeploymentID)
+		ds.Send(&api.Event{
+			Parent:         deploymentName,
+			Name:           fmt.Sprintf("events/%d", event.ID),
+			Type:           "deployment",
+			DeploymentName: deploymentName,
+			Data:           &api.Event_Deployment{Deployment: api.NewExpandedDeployment(ed)},
+			CreateTime:     api.NewTimestamp(event.CreatedAt),
 		})
 
 		if de.Status == "failed" {

@@ -39,7 +39,7 @@ import ProcessScale, {
 import protoMapDiff, { applyProtoMapDiff, Diff } from './util/protoMapDiff';
 import protoMapReplace from './util/protoMapReplace';
 import buildProcessesMap from './util/buildProcessesMap';
-import { ScaleRequest, ScaleRequestState, CreateScaleRequest } from './generated/controller_pb';
+import { ScaleRequest, ScaleConfig, ScaleRequestState, CreateScaleRequest } from './generated/controller_pb';
 
 export enum ActionType {
 	SET_PROCESSES = 'FormationEditor__SET_PROCESSES',
@@ -265,11 +265,13 @@ function reducer(prevState: State, actions: Action | Action[]): State {
 		if (scale === prevScale && processes === prevProcesses) return;
 
 		const s = new CreateScaleRequest();
+		const cfg = new ScaleConfig();
+		s.setConfig(cfg);
 		if (scale) {
 			s.setParent(scale.getParent());
-			protoMapReplace(s.getTagsMap(), scale.getNewTagsMap());
+			protoMapReplace(cfg.getTagsMap(), scale.getNewTagsMap());
 		}
-		protoMapReplace(s.getProcessesMap(), new jspb.Map(processes));
+		protoMapReplace(cfg.getProcessesMap(), new jspb.Map(processes));
 		nextState.nextScale = s;
 	})();
 
@@ -349,9 +351,11 @@ export default function FormationEditor(props: Props) {
 		dispatch({ type: ActionType.SET_CONFIRMING, confirming: false });
 
 		const req = new CreateScaleRequest();
+		const cfg = new ScaleConfig();
 		req.setParent(scale.getParent());
-		protoMapReplace(req.getProcessesMap(), new jspb.Map(processes));
-		protoMapReplace(req.getTagsMap(), scale.getNewTagsMap());
+		protoMapReplace(cfg.getProcessesMap(), new jspb.Map(processes));
+		protoMapReplace(cfg.getTagsMap(), scale.getNewTagsMap());
+		req.setConfig(cfg);
 		const cancel = client.createScale(req, (scaleReq: ScaleRequest, error: Error | null) => {
 			if (error) {
 				handleError(error);
