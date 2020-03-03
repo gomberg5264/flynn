@@ -37,7 +37,7 @@ func (r *JobRepo) Add(job *ct.Job) error {
 	}
 
 	var deploymentID *string
-	err = tx.QueryRow("select_job_deployment", job.AppID, job.ReleaseID).Scan(&deploymentID)
+	err = tx.QueryRow("job_find_deployment", job.AppID, job.ReleaseID).Scan(&deploymentID)
 	if err != nil {
 		tx.Rollback()
 		return err
