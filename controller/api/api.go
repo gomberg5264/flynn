@@ -708,3 +708,42 @@ func NewJobState(from ct.JobState) Job_JobState {
 	}
 	return Job_PENDING
 }
+
+func NewJob(from *ct.Job) *Job {
+	if from == nil {
+		return nil
+	}
+
+	var exitStatus *NullableInt32
+	if from.ExitStatus != nil {
+		exitStatus = &NullableInt32{Value: *from.ExitStatus}
+	}
+
+	var hostError string
+	if from.HostError != nil {
+		hostError = *from.HostError
+	}
+
+	var restarts *NullableInt32
+	if from.Restarts != nil {
+		restarts = &NullableInt32{Value: *from.Restarts}
+	}
+
+	return &Job{
+		Parent:         fmt.Sprintf("apps/%s/releases/%s", from.AppID, from.ReleaseID),
+		Name:           fmt.Sprintf("jobs/%s", from.UUID),
+		DeploymentName: fmt.Sprintf("apps/%s/deployments/%s", from.AppID, from.DeploymentID),
+		HostName:       fmt.Sprintf("hosts/%s", from.HostID),
+		Type:           from.Type,
+		State:          NewJobState(from.State),
+		Args:           from.Args,
+		VolumeIds:      from.VolumeIDs,
+		Labels:         from.Meta,
+		ExitStatus:     exitStatus,
+		HostError:      hostError,
+		RunTime:        NewTimestamp(from.RunAt),
+		Restarts:       restarts,
+		CreateTime:     NewTimestamp(from.CreatedAt),
+		UpdateTime:     NewTimestamp(from.UpdatedAt),
+	}
+}

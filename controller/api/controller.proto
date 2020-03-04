@@ -539,11 +539,15 @@ message ExpandedDeployment {
   string error = 14;
 }
 
+message NullableInt32 {
+  int32 value = 1;
+}
+
 message Job {
   // parent = "apps/APP_ID/releases/RELEASE_ID"
   string parent = 1;
 
-  // name = "apps/APP_ID/releases/RELEASE_ID/jobs/UUID"
+  // name = "jobs/UUID"
   string name = 2;
 
   // deployment_name = "apps/APP_ID/deployments/DEPLOYMENT_ID"
@@ -577,13 +581,13 @@ message Job {
 
   map<string, string> labels = 9;
 
-  int32 exit_status = 10;
+  NullableInt32 exit_status = 10;
 
   string host_error = 11;
 
   google.protobuf.Timestamp run_time = 12;
 
-  int32 restarts = 13;
+  NullableInt32 restarts = 13;
 
   google.protobuf.Timestamp create_time = 14;
 
@@ -594,7 +598,7 @@ message Event {
   // when deployment is set:
   // parent = "apps/APP_ID/deployments/DEPLOYMENT_ID"
   // when job is set:
-  // parent = "apps/APP_ID/releases/RELEASE_ID/jobs/UUID"
+  // parent = "jobs/UUID"
   string parent = 1;
 
   //  name = "events/EVENT_ID"

@@ -36,11 +36,15 @@ func (r *JobRepo) Add(job *ct.Job) error {
 		return err
 	}
 
+	// find most recent pending or running deployment for release if any
 	var deploymentID *string
-	err = tx.QueryRow("job_find_deployment", job.AppID, job.ReleaseID).Scan(&deploymentID)
+	rows, err := tx.Query("job_find_deployment", job.AppID, job.ReleaseID)
 	if err != nil {
 		tx.Rollback()
 		return err
+	}
+	if rows.Next() {
+		rows.Scan(&deploymentID)
 	}
 
 	// TODO: actually validate

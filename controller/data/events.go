@@ -130,11 +130,12 @@ type EventSubscriber struct {
 	Err     error
 	errOnce sync.Once
 
-	l           *EventListener
-	queue       chan *ct.Event
-	appIDs      []string
-	objectTypes []string
-	objectIDs   []string
+	l             *EventListener
+	queue         chan *ct.Event
+	appIDs        []string
+	deploymentIDs []string
+	objectTypes   []string
+	objectIDs     []string
 
 	stop     chan struct{}
 	stopOnce sync.Once
@@ -171,6 +172,18 @@ func (e *EventSubscriber) Notify(event *ct.Event) {
 		matchesID := false
 		for _, objectID := range e.objectIDs {
 			if objectID == event.ObjectID {
+				matchesID = true
+				break
+			}
+		}
+		if !matchesID {
+			return
+		}
+	}
+	if len(e.deploymentIDs) > 0 {
+		matchesID := false
+		for _, deploymentID := range e.deploymentIDs {
+			if deploymentID == event.DeploymentID {
 				matchesID = true
 				break
 			}
@@ -233,22 +246,48 @@ type EventListener struct {
 	doneCh    chan struct{}
 }
 
+type EventSubscriptionOpts struct {
+	AppIDs        []string
+	DeploymentIDs []string
+	ObjectTypes   []ct.EventType
+	ObjectIDs     []string
+}
+
 // Subscribe creates and returns an EventSubscriber for the given apps, types and objects.
 // An empty appIDs list subscribes to all apps
 func (e *EventListener) Subscribe(appIDs, objectTypes, objectIDs []string) (*EventSubscriber, error) {
+	ctObjectTypes := make([]ct.EventType, len(objectTypes))
+	for i, t := range objectTypes {
+		ctObjectTypes[i] = ct.EventType(t)
+	}
+	return e.SubscribeWithOpts(&EventSubscriptionOpts{
+		AppIDs:      appIDs,
+		ObjectTypes: ctObjectTypes,
+		ObjectIDs:   objectIDs,
+	})
+}
+
+// SubscribeWithOpts creates and returns an EventSubscriber for the given opts.
+// An empty ID list subscribes to all
+func (e *EventListener) SubscribeWithOpts(opts *EventSubscriptionOpts) (*EventSubscriber, error) {
 	e.subMtx.Lock()
 	defer e.subMtx.Unlock()
 	if e.IsClosed() {
 		return nil, errors.New("event listener closed")
 	}
+	objectTypeStrings := make([]string, len(opts.ObjectTypes))
+	for i, t := range opts.ObjectTypes {
+		objectTypeStrings[i] = string(t)
+	}
 	s := &EventSubscriber{
-		Events:      make(chan *ct.Event),
-		l:           e,
-		queue:       make(chan *ct.Event, eventBufferSize),
-		stop:        make(chan struct{}),
-		appIDs:      appIDs,
-		objectTypes: objectTypes,
-		objectIDs:   objectIDs,
+		Events:        make(chan *ct.Event),
+		l:             e,
+		queue:         make(chan *ct.Event, eventBufferSize),
+		stop:          make(chan struct{}),
+		appIDs:        opts.AppIDs,
+		deploymentIDs: opts.DeploymentIDs,
+		objectTypes:   objectTypeStrings,
+		objectIDs:     opts.ObjectIDs,
 	}
 	go s.loop()
 	e.subscribers[s] = struct{}{}

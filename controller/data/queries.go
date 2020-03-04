@@ -450,7 +450,7 @@ UPDATE formations SET deleted_at = now(), processes = NULL, updated_at = now()
 WHERE app_id = $1 AND deleted_at IS NULL`
 	scaleRequestInsertQuery = `
 INSERT INTO scale_requests (scale_request_id, app_id, release_id, state, old_processes, new_processes, old_tags, new_tags)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING created_at, updated_at`
 	scaleRequestCancelQuery = `
 WITH updated AS (

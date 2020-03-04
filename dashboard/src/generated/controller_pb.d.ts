@@ -1182,6 +1182,26 @@ export namespace ExpandedDeployment {
   }
 }
 
+export class NullableInt32 extends jspb.Message {
+  getValue(): number;
+  setValue(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): NullableInt32.AsObject;
+  static toObject(includeInstance: boolean, msg: NullableInt32): NullableInt32.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: NullableInt32, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): NullableInt32;
+  static deserializeBinaryFromReader(message: NullableInt32, reader: jspb.BinaryReader): NullableInt32;
+}
+
+export namespace NullableInt32 {
+  export type AsObject = {
+    value: number,
+  }
+}
+
 export class Job extends jspb.Message {
   getParent(): string;
   setParent(value: string): void;
@@ -1213,8 +1233,10 @@ export class Job extends jspb.Message {
 
   getLabelsMap(): jspb.Map<string, string>;
   clearLabelsMap(): void;
-  getExitStatus(): number;
-  setExitStatus(value: number): void;
+  hasExitStatus(): boolean;
+  clearExitStatus(): void;
+  getExitStatus(): NullableInt32 | undefined;
+  setExitStatus(value?: NullableInt32): void;
 
   getHostError(): string;
   setHostError(value: string): void;
@@ -1224,8 +1246,10 @@ export class Job extends jspb.Message {
   getRunTime(): google_protobuf_timestamp_pb.Timestamp | undefined;
   setRunTime(value?: google_protobuf_timestamp_pb.Timestamp): void;
 
-  getRestarts(): number;
-  setRestarts(value: number): void;
+  hasRestarts(): boolean;
+  clearRestarts(): void;
+  getRestarts(): NullableInt32 | undefined;
+  setRestarts(value?: NullableInt32): void;
 
   hasCreateTime(): boolean;
   clearCreateTime(): void;
@@ -1258,10 +1282,10 @@ export namespace Job {
     argsList: Array<string>,
     volumeIdsList: Array<string>,
     labelsMap: Array<[string, string]>,
-    exitStatus: number,
+    exitStatus?: NullableInt32.AsObject,
     hostError: string,
     runTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
-    restarts: number,
+    restarts?: NullableInt32.AsObject,
     createTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
     updateTime?: google_protobuf_timestamp_pb.Timestamp.AsObject,
   }

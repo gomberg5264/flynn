@@ -950,8 +950,8 @@ CREATE TRIGGER set_tcp_route_port
 		`ALTER TABLE deployments ALTER COLUMN type SET NOT NULL`,
 	)
 	migrations.Add(48, `
-CREATE FUNCTION deployment_status(deployment_id uuid) RETURNS text AS $$
-  SELECT data->>'status' FROM events WHERE object_type = 'deployment' AND object_id::uuid = deployment_id ORDER BY created_at DESC LIMIT 1;
+CREATE FUNCTION deployment_status(d_id uuid) RETURNS text AS $$
+  SELECT data->>'status' FROM events WHERE object_type = 'deployment' AND object_id::uuid = d_id ORDER BY created_at DESC LIMIT 1;
 $$ LANGUAGE SQL;
 	`)
 	migrations.Add(49, `

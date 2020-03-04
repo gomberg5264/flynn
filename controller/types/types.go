@@ -271,19 +271,20 @@ type Job struct {
 	// empty if the job is pending
 	HostID string `json:"host_id,omitempty"`
 
-	AppID      string            `json:"app,omitempty"`
-	ReleaseID  string            `json:"release,omitempty"`
-	Type       string            `json:"type,omitempty"`
-	State      JobState          `json:"state,omitempty"`
-	Args       []string          `json:"args,omitempty"`
-	VolumeIDs  []string          `json:"volumes,omitempty"`
-	Meta       map[string]string `json:"meta,omitempty"`
-	ExitStatus *int32            `json:"exit_status,omitempty"`
-	HostError  *string           `json:"host_error,omitempty"`
-	RunAt      *time.Time        `json:"run_at,omitempty"`
-	Restarts   *int32            `json:"restarts,omitempty"`
-	CreatedAt  *time.Time        `json:"created_at,omitempty"`
-	UpdatedAt  *time.Time        `json:"updated_at,omitempty"`
+	AppID        string            `json:"app,omitempty"`
+	ReleaseID    string            `json:"release,omitempty"`
+	DeploymentID string            `json:"deployment,omitempty"`
+	Type         string            `json:"type,omitempty"`
+	State        JobState          `json:"state,omitempty"`
+	Args         []string          `json:"args,omitempty"`
+	VolumeIDs    []string          `json:"volumes,omitempty"`
+	Meta         map[string]string `json:"meta,omitempty"`
+	ExitStatus   *int32            `json:"exit_status,omitempty"`
+	HostError    *string           `json:"host_error,omitempty"`
+	RunAt        *time.Time        `json:"run_at,omitempty"`
+	Restarts     *int32            `json:"restarts,omitempty"`
+	CreatedAt    *time.Time        `json:"created_at,omitempty"`
+	UpdatedAt    *time.Time        `json:"updated_at,omitempty"`
 }
 
 type JobState string
