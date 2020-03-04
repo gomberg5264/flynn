@@ -1262,6 +1262,26 @@ func unaryReceiveDeployments(s *GRPCSuite, c *C, req *api.StreamDeploymentsReque
 	return
 }
 
+func (s *GRPCSuite) TestCreateDeployment(c *C) {
+	testApp1 := s.createTestApp(c, &api.App{DisplayName: "test1"})
+	testArtifact1 := s.createTestArtifact(c, &ct.Artifact{})
+	testRelease1 := s.createTestRelease(c, testApp1.Name, &api.Release{
+		Labels:    map[string]string{"i": "1"},
+		Artifacts: []string{testArtifact1.ID},
+	})
+
+	req := &api.CreateDeploymentRequest{
+		Parent: testRelease1.Name,
+	}
+	ctx, _ := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	stream, err := s.grpc.CreateDeployment(ctx, req)
+	c.Assert(err, IsNil)
+
+	// deployment has no processes, so CreateDeployment should return right away
+	_, err = stream.Recv()
+	c.Assert(err, Equals, io.EOF)
+}
+
 func (s *GRPCSuite) TestStreamDeployments(c *C) {
 	testApp1 := s.createTestApp(c, &api.App{DisplayName: "test1"})
 	testApp2 := s.createTestApp(c, &api.App{DisplayName: "test2"})

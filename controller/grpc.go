@@ -904,6 +904,11 @@ func (g *grpcAPI) CreateDeployment(req *api.CreateDeploymentRequest, ds api.Cont
 		return api.NewError(err, err.Error())
 	}
 
+	// handle deployments without processes
+	if api.NewDeploymentStatus(d.Status) == api.DeploymentStatus_COMPLETE {
+		return nil
+	}
+
 	// Wait for deployment to complete and perform scale
 
 	sub, err := g.subscribeEvents(&data.EventSubscriptionOpts{
@@ -916,56 +921,62 @@ func (g *grpcAPI) CreateDeployment(req *api.CreateDeploymentRequest, ds api.Cont
 	}
 	defer sub.Close()
 
+outer:
 	for {
-		event, ok := <-sub.Events
-		if !ok {
-			break
-		}
-		if event.ObjectType != "deployment" && event.ObjectType != "job" {
-			continue
-		}
-
-		deploymentName := fmt.Sprintf("apps/%s/deployments/%s", event.AppID, event.DeploymentID)
-		apiEvent := &api.Event{
-			Name:           fmt.Sprintf("events/%d", event.ID),
-			Type:           string(event.ObjectType),
-			DeploymentName: deploymentName,
-			CreateTime:     api.NewTimestamp(event.CreatedAt),
-		}
-		var de *ct.DeploymentEvent
-		switch event.ObjectType {
-		case "deployment":
-			if err := json.Unmarshal(event.Data, &de); err != nil {
-				logger.Error("failed to unmarshal deployment event", "event_id", event.ID, "deployment_id", event.ObjectID, "error", err)
-				continue
+		select {
+		case event, ok := <-sub.Events:
+			if !ok {
+				break outer
+			}
+			if event.ObjectType != "deployment" && event.ObjectType != "job" {
+				continue outer
 			}
 
-			ed, err := g.deploymentRepo.GetExpanded(event.DeploymentID)
-			if err != nil {
-				logger.Error("failed to fetch expanded deployment for event", "event_id", event.ID, "deployment_id", event.ObjectID, "error", err)
-				continue
+			deploymentName := fmt.Sprintf("apps/%s/deployments/%s", event.AppID, event.DeploymentID)
+			apiEvent := &api.Event{
+				Name:           fmt.Sprintf("events/%d", event.ID),
+				Type:           string(event.ObjectType),
+				DeploymentName: deploymentName,
+				CreateTime:     api.NewTimestamp(event.CreatedAt),
 			}
-			apiEvent.Parent = deploymentName
-			apiEvent.Data = &api.Event_Deployment{Deployment: api.NewExpandedDeployment(ed)}
+			var de *ct.DeploymentEvent
+			switch event.ObjectType {
+			case "deployment":
+				if err := json.Unmarshal(event.Data, &de); err != nil {
+					logger.Error("failed to unmarshal deployment event", "event_id", event.ID, "deployment_id", event.ObjectID, "error", err)
+					continue outer
+				}
 
-		case "job":
-			var job *ct.Job
-			if err := json.Unmarshal(event.Data, &job); err != nil {
-				logger.Error("failed to unmarshal job event", "event_id", event.ID, "deployment_id", event.DeploymentID, "job_uuid", event.UniqueID, "error", err)
-				continue
-			}
-			apiEvent.Parent = fmt.Sprintf("jobs/%s", event.UniqueID)
-			apiEvent.Data = &api.Event_Job{Job: api.NewJob(job)}
-		}
-		ds.Send(apiEvent)
+				ed, err := g.deploymentRepo.GetExpanded(event.DeploymentID)
+				if err != nil {
+					logger.Error("failed to fetch expanded deployment for event", "event_id", event.ID, "deployment_id", event.ObjectID, "error", err)
+					continue outer
+				}
+				apiEvent.Parent = deploymentName
+				apiEvent.Data = &api.Event_Deployment{Deployment: api.NewExpandedDeployment(ed)}
 
-		if de != nil {
-			if de.Status == "failed" {
-				return status.Errorf(codes.FailedPrecondition, de.Error)
+			case "job":
+				var job *ct.Job
+				if err := json.Unmarshal(event.Data, &job); err != nil {
+					logger.Error("failed to unmarshal job event", "event_id", event.ID, "deployment_id", event.DeploymentID, "job_uuid", event.UniqueID, "error", err)
+					continue outer
+				}
+				apiEvent.Parent = fmt.Sprintf("jobs/%s", event.UniqueID)
+				apiEvent.Data = &api.Event_Job{Job: api.NewJob(job)}
 			}
-			if de.Status == "complete" {
-				break
+			ds.Send(apiEvent)
+
+			if de != nil {
+				if de.Status == "failed" {
+					return status.Errorf(codes.FailedPrecondition, de.Error)
+				}
+				if de.Status == "complete" {
+					break outer
+				}
 			}
+		case <-ds.Context().Done():
+			err := ds.Context().Err()
+			return maybeError(err)
 		}
 	}
 
