@@ -514,11 +514,15 @@ export namespace CreateReleaseRequest {
 }
 
 export class DeploymentConfig extends jspb.Message {
-  getTimeout(): number;
-  setTimeout(value: number): void;
+  hasTimeout(): boolean;
+  clearTimeout(): void;
+  getTimeout(): NullableInt32 | undefined;
+  setTimeout(value?: NullableInt32): void;
 
-  getBatchSize(): number;
-  setBatchSize(value: number): void;
+  hasBatchSize(): boolean;
+  clearBatchSize(): void;
+  getBatchSize(): NullableInt32 | undefined;
+  setBatchSize(value?: NullableInt32): void;
 
   hasScaleConfig(): boolean;
   clearScaleConfig(): void;
@@ -537,8 +541,8 @@ export class DeploymentConfig extends jspb.Message {
 
 export namespace DeploymentConfig {
   export type AsObject = {
-    timeout: number,
-    batchSize: number,
+    timeout?: NullableInt32.AsObject,
+    batchSize?: NullableInt32.AsObject,
     scaleConfig?: ScaleConfig.AsObject,
   }
 }
@@ -1182,26 +1186,6 @@ export namespace ExpandedDeployment {
   }
 }
 
-export class NullableInt32 extends jspb.Message {
-  getValue(): number;
-  setValue(value: number): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): NullableInt32.AsObject;
-  static toObject(includeInstance: boolean, msg: NullableInt32): NullableInt32.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: NullableInt32, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): NullableInt32;
-  static deserializeBinaryFromReader(message: NullableInt32, reader: jspb.BinaryReader): NullableInt32;
-}
-
-export namespace NullableInt32 {
-  export type AsObject = {
-    value: number,
-  }
-}
-
 export class Job extends jspb.Message {
   getParent(): string;
   setParent(value: string): void;
@@ -1368,6 +1352,26 @@ export namespace Event {
     DATA_NOT_SET = 0,
     DEPLOYMENT = 7,
     JOB = 8,
+  }
+}
+
+export class NullableInt32 extends jspb.Message {
+  getValue(): number;
+  setValue(value: number): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): NullableInt32.AsObject;
+  static toObject(includeInstance: boolean, msg: NullableInt32): NullableInt32.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: NullableInt32, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): NullableInt32;
+  static deserializeBinaryFromReader(message: NullableInt32, reader: jspb.BinaryReader): NullableInt32;
+}
+
+export namespace NullableInt32 {
+  export type AsObject = {
+    value: number,
   }
 }
 

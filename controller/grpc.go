@@ -897,9 +897,7 @@ func parseDeploymentProcesses(from map[string]int32) map[string]int {
 }
 
 func (g *grpcAPI) CreateDeployment(req *api.CreateDeploymentRequest, ds api.Controller_CreateDeploymentServer) error {
-	appID := api.ParseIDFromName(req.Parent, "apps")
-	releaseID := api.ParseIDFromName(req.Parent, "releases")
-	d, err := g.deploymentRepo.Add(appID, releaseID)
+	d, err := g.deploymentRepo.AddExpanded(req.ControllerType())
 	if err != nil {
 		return api.NewError(err, err.Error())
 	}
@@ -912,7 +910,7 @@ func (g *grpcAPI) CreateDeployment(req *api.CreateDeploymentRequest, ds api.Cont
 	// Wait for deployment to complete and perform scale
 
 	sub, err := g.subscribeEvents(&data.EventSubscriptionOpts{
-		AppIDs:        []string{appID},
+		AppIDs:        []string{d.AppID},
 		ObjectTypes:   []ct.EventType{ct.EventTypeDeployment, ct.EventTypeJob},
 		DeploymentIDs: []string{d.ID},
 	})

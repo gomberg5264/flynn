@@ -390,6 +390,15 @@ type NewJob struct {
 
 const DefaultDeployTimeout = 120 // seconds
 
+type CreateDeploymentConfig struct {
+	AppID     string
+	ReleaseID string
+	Timeout   *int32
+	BatchSize *int
+	Processes *map[string]int
+	Tags      *map[string]map[string]string
+}
+
 type Deployment struct {
 	ID              string                       `json:"id,omitempty"`
 	AppID           string                       `json:"app,omitempty"`

@@ -170,7 +170,10 @@ func (s *GRPCSuite) createTestRelease(c *C, parentName string, release *api.Rele
 func (s *GRPCSuite) createTestDeployment(c *C, releaseName string) *api.ExpandedDeployment {
 	appID := api.ParseIDFromName(releaseName, "apps")
 	releaseID := api.ParseIDFromName(releaseName, "releases")
-	ctDeployment, err := s.api.deploymentRepo.AddExpanded(appID, releaseID)
+	ctDeployment, err := s.api.deploymentRepo.AddExpanded(&ct.CreateDeploymentConfig{
+		AppID:     appID,
+		ReleaseID: releaseID,
+	})
 	c.Assert(err, IsNil)
 	return api.NewExpandedDeployment(ctDeployment)
 }

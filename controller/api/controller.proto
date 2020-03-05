@@ -230,6 +230,7 @@ message UpdateAppRequest {
 
 message ScaleConfig {
   map<string, int32> processes = 1;
+
   map<string, DeploymentProcessTags> tags = 2;
 }
 
@@ -250,8 +251,10 @@ message CreateReleaseRequest {
 }
 
 message DeploymentConfig {
-  int32 timeout = 1;
-  int32 batch_size = 2;
+  NullableInt32 timeout = 1;
+
+  NullableInt32 batch_size = 2;
+
   ScaleConfig scale_config = 3;
 }
 
@@ -539,10 +542,6 @@ message ExpandedDeployment {
   string error = 14;
 }
 
-message NullableInt32 {
-  int32 value = 1;
-}
-
 message Job {
   // parent = "apps/APP_ID/releases/RELEASE_ID"
   string parent = 1;
@@ -627,4 +626,8 @@ message Event {
 
     Job job = 8;
   }
+}
+
+message NullableInt32 {
+  int32 value = 1;
 }

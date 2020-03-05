@@ -659,6 +659,29 @@ func (s DeploymentStatus) ControllerType() string {
 	}
 }
 
+func (from *CreateDeploymentRequest) ControllerType() *ct.CreateDeploymentConfig {
+	cdc := &ct.CreateDeploymentConfig{
+		AppID:     ParseIDFromName(from.Parent, "apps"),
+		ReleaseID: ParseIDFromName(from.Parent, "releases"),
+	}
+	if from.Config != nil {
+		if from.Config.Timeout != nil {
+			cdc.Timeout = &from.Config.Timeout.Value
+		}
+		if from.Config.BatchSize != nil {
+			bs := int(from.Config.BatchSize.Value)
+			cdc.BatchSize = &bs
+		}
+		if from.Config.ScaleConfig != nil {
+			p := NewControllerDeploymentProcesses(from.Config.ScaleConfig.Processes)
+			cdc.Processes = &p
+			t := NewControllerDeploymentTags(from.Config.ScaleConfig.Tags)
+			cdc.Tags = &t
+		}
+	}
+	return cdc
+}
+
 func NewExpandedDeployment(from *ct.ExpandedDeployment) *ExpandedDeployment {
 	convertReleaseType := func(releaseType ct.ReleaseType) ReleaseType {
 		switch releaseType {
