@@ -20,6 +20,8 @@ service Controller {
 
   rpc StreamDeployments(StreamDeploymentsRequest) returns (stream StreamDeploymentsResponse) {};
 
+  rpc StreamDeploymentEvents (StreamDeploymentEventsRequest) returns (stream StreamDeploymentEventsResponse) {};
+
   rpc UpdateApp (UpdateAppRequest) returns (App) {};
 
   rpc CreateScale (CreateScaleRequest) returns (ScaleRequest) {};
@@ -27,8 +29,6 @@ service Controller {
   rpc CreateRelease (CreateReleaseRequest) returns (Release) {};
 
   rpc CreateDeployment (CreateDeploymentRequest) returns (stream Event) {};
-
-  rpc StreamDeploymentEvents (StreamDeploymentEventsRequest) returns (stream Event) {};
 }
 
 message StatusResponse {
@@ -181,6 +181,35 @@ message StreamScalesResponse {
   string next_page_token = 3;
 }
 
+message StreamDeploymentEventsRequest {
+  // The maximum number of resources to return in the initial page.
+  int32 page_size = 1;
+
+  // Used for pagination. Must be a next_page_token returned from a previous response.
+  string page_token = 2;
+
+  // Specifies an optional list of resource names that should be looked up. The
+  // list length must be smaller than page_size. This can be used to request a
+  // known set of one or more resources, and can also be used to retrieve a
+  // single resource. Parent resource names may also be used to filter
+  // resources. Resource names are supported for apps and deployments.
+  repeated string name_filters = 3;
+
+  // When true, leaves the stream open and sends newly created resources
+  // matching the filters until the stream is closed. page_token must not be
+  // set.
+  bool stream_creates = 8;
+}
+
+message StreamDeploymentEventsResponse {
+  repeated Event events = 1;
+
+  // Set to true on the last response for the initial page.
+  bool page_complete = 2;
+
+  string next_page_token = 3;
+}
+
 message StreamDeploymentsRequest {
   // The maximum number of resources to return in the initial page.
   int32 page_size = 1;
@@ -263,13 +292,6 @@ message CreateDeploymentRequest {
   string parent = 1;
 
   DeploymentConfig config = 2;
-}
-
-message StreamDeploymentEventsRequest {
-  // parent = ""
-  // parent = "apps/APP_ID"
-  // parent = "apps/APP_ID/deployments/DEPLOYMENT_ID"
-  string parent = 1;
 }
 
 message App {

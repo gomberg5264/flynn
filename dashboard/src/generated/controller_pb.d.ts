@@ -327,6 +327,70 @@ export namespace StreamScalesResponse {
   }
 }
 
+export class StreamDeploymentEventsRequest extends jspb.Message {
+  getPageSize(): number;
+  setPageSize(value: number): void;
+
+  getPageToken(): string;
+  setPageToken(value: string): void;
+
+  clearNameFiltersList(): void;
+  getNameFiltersList(): Array<string>;
+  setNameFiltersList(value: Array<string>): void;
+  addNameFilters(value: string, index?: number): string;
+
+  getStreamCreates(): boolean;
+  setStreamCreates(value: boolean): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): StreamDeploymentEventsRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: StreamDeploymentEventsRequest): StreamDeploymentEventsRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: StreamDeploymentEventsRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): StreamDeploymentEventsRequest;
+  static deserializeBinaryFromReader(message: StreamDeploymentEventsRequest, reader: jspb.BinaryReader): StreamDeploymentEventsRequest;
+}
+
+export namespace StreamDeploymentEventsRequest {
+  export type AsObject = {
+    pageSize: number,
+    pageToken: string,
+    nameFiltersList: Array<string>,
+    streamCreates: boolean,
+  }
+}
+
+export class StreamDeploymentEventsResponse extends jspb.Message {
+  clearEventsList(): void;
+  getEventsList(): Array<Event>;
+  setEventsList(value: Array<Event>): void;
+  addEvents(value?: Event, index?: number): Event;
+
+  getPageComplete(): boolean;
+  setPageComplete(value: boolean): void;
+
+  getNextPageToken(): string;
+  setNextPageToken(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): StreamDeploymentEventsResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: StreamDeploymentEventsResponse): StreamDeploymentEventsResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: StreamDeploymentEventsResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): StreamDeploymentEventsResponse;
+  static deserializeBinaryFromReader(message: StreamDeploymentEventsResponse, reader: jspb.BinaryReader): StreamDeploymentEventsResponse;
+}
+
+export namespace StreamDeploymentEventsResponse {
+  export type AsObject = {
+    eventsList: Array<Event.AsObject>,
+    pageComplete: boolean,
+    nextPageToken: string,
+  }
+}
+
 export class StreamDeploymentsRequest extends jspb.Message {
   getPageSize(): number;
   setPageSize(value: number): void;
@@ -570,26 +634,6 @@ export namespace CreateDeploymentRequest {
   export type AsObject = {
     parent: string,
     config?: DeploymentConfig.AsObject,
-  }
-}
-
-export class StreamDeploymentEventsRequest extends jspb.Message {
-  getParent(): string;
-  setParent(value: string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): StreamDeploymentEventsRequest.AsObject;
-  static toObject(includeInstance: boolean, msg: StreamDeploymentEventsRequest): StreamDeploymentEventsRequest.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: StreamDeploymentEventsRequest, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): StreamDeploymentEventsRequest;
-  static deserializeBinaryFromReader(message: StreamDeploymentEventsRequest, reader: jspb.BinaryReader): StreamDeploymentEventsRequest;
-}
-
-export namespace StreamDeploymentEventsRequest {
-  export type AsObject = {
-    parent: string,
   }
 }
 

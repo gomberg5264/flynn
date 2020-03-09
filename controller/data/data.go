@@ -58,7 +58,24 @@ func (t *PageToken) Cursor() (*time.Time, error) {
 		return nil, fmt.Errorf("error parsing cursorID %q: %s", *t.CursorID, err)
 	}
 	return typeconv.TimePtr(time.Unix(i/1000000, i%1000000*1000)), nil
+}
 
+func (t *PageToken) EventsCursor() (beforeID *int64, sinceID *int64) {
+	if t == nil || t.CursorID == nil {
+		return
+	}
+	parts := strings.Split(*t.CursorID, "_")
+	if parts[0] != "" {
+		if i, err := strconv.ParseInt(parts[0], 10, 64); err == nil {
+			beforeID = &i
+		}
+	}
+	if parts[1] != "" {
+		if i, err := strconv.ParseInt(parts[1], 10, 64); err == nil {
+			sinceID = &i
+		}
+	}
+	return
 }
 
 func (t *PageToken) String() string {
@@ -79,6 +96,19 @@ func toCursorID(t *time.Time) *string {
 		return nil
 	}
 	return typeconv.StringPtr(strconv.FormatInt(t.UnixNano()/1000, 10))
+}
+
+// toEventsCursorID returns the given beforeID and sinceID
+func toEventsCursorID(beforeID *int64, sinceID *int64) *string {
+	parts := make([]string, 2)
+	if beforeID != nil {
+		parts[0] = fmt.Sprintf("%d", beforeID)
+	}
+	if sinceID != nil {
+		parts[1] = fmt.Sprintf("%d", sinceID)
+	}
+	str := strings.Join(parts, "_")
+	return &str
 }
 
 type rowQueryer interface {

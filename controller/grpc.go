@@ -875,9 +875,128 @@ func (g *grpcAPI) StreamDeployments(req *api.StreamDeploymentsRequest, stream ap
 	return maybeError(sub.Err)
 }
 
-func (g *grpcAPI) StreamDeploymentEvents(req *api.StreamDeploymentEventsRequest, srv api.Controller_StreamDeploymentEventsServer) error {
-	// TODO(jvatic): implement this method
-	return status.Errorf(codes.Unimplemented, "method StreamDeploymentEvents not implemented")
+func (g *grpcAPI) listDeploymentEvents(req *api.StreamDeploymentEventsRequest) ([]*api.Event, *data.PageToken, error) {
+	pageSize := int(req.GetPageSize())
+	pageToken, err := data.ParsePageToken(req.PageToken)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if pageSize > 0 {
+		pageToken.Size = pageSize
+	} else {
+		pageSize = pageToken.Size
+	}
+
+	appIDs := api.ParseIDsFromNameFilters(req.GetNameFilters(), "apps")
+	deploymentIDs := api.ParseIDsFromNameFilters(req.GetNameFilters(), "deployments")
+	ctEvents, nextPageToken, err := g.eventRepo.ListPage(data.ListEventOptions{
+		PageToken:     *pageToken,
+		AppIDs:        appIDs,
+		ObjectTypes:   []ct.EventType{ct.EventTypeDeployment, ct.EventTypeJob},
+		DeploymentIDs: deploymentIDs,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	events := make([]*api.Event, len(ctEvents))
+	for i, e := range ctEvents {
+		events[i] = api.NewEvent(e)
+		apps = append(apps, api.NewApp(a))
+	}
+
+	return events, nextPageToken, nil
+}
+
+func (g *grpcAPI) StreamDeploymentEvents(req *api.StreamDeploymentEventsRequest, stream api.Controller_StreamDeploymentEventsServer) (err error) {
+	defer (func() {
+		if err != nil {
+			err = api.NewError(err, err.Error())
+		}
+	})()
+
+	unary := !req.StreamCreates
+
+	var sub *data.EventSubscriber
+	if !unary {
+		appIDs := api.ParseIDsFromNameFilters(req.GetNameFilters(), "apps")
+		deploymentIDs := api.ParseIDsFromNameFilters(req.GetNameFilters(), "deployments")
+		sub, err = g.subscribeEvents(&data.EventSubscriptionOpts{
+			AppIDs:        appIDs,
+			ObjectTypes:   []ct.EventType{ct.EventTypeDeployment, ct.EventTypeJob},
+			DeploymentIDs: deploymentIDs,
+		})
+		if err != nil {
+			return
+		}
+		defer sub.Close()
+	}
+
+	events, nextPageToken, err := g.listDeploymentEvents(req)
+	if err != nil {
+		return
+	}
+
+	stream.Send(&api.StreamDeploymentEventsResponse{
+		Events:        events,
+		NextPageToken: nextPageToken.String(),
+		PageComplete:  true,
+	})
+
+	if sub == nil {
+		return
+	}
+
+outer:
+	for {
+		select {
+		case event, ok := <-sub.Events:
+			if !ok {
+				err = sub.Err
+				return
+			}
+
+			var deploymentName string
+			if event.DeploymentID != "" {
+				deploymentName = fmt.Sprintf("apps/%s/deployments/%s", event.AppID, event.DeploymentID)
+			}
+			apiEvent := &api.Event{
+				Name:           fmt.Sprintf("events/%d", event.ID),
+				Type:           string(event.ObjectType),
+				DeploymentName: deploymentName,
+				CreateTime:     api.NewTimestamp(event.CreatedAt),
+			}
+
+			switch event.ObjectType {
+			case "deployment":
+				ed, err := g.deploymentRepo.GetExpanded(event.DeploymentID)
+				if err != nil {
+					logger.Error("failed to fetch expanded deployment for event", "event_id", event.ID, "deployment_id", event.ObjectID, "error", err)
+					continue outer
+				}
+				apiEvent.Parent = deploymentName
+				apiEvent.Data = &api.Event_Deployment{Deployment: api.NewExpandedDeployment(ed)}
+
+			case "job":
+				var job *ct.Job
+				if err := json.Unmarshal(event.Data, &job); err != nil {
+					logger.Error("failed to unmarshal job event", "event_id", event.ID, "deployment_id", event.DeploymentID, "job_uuid", event.UniqueID, "error", err)
+					continue outer
+				}
+				apiEvent.Parent = fmt.Sprintf("jobs/%s", event.UniqueID)
+				apiEvent.Data = &api.Event_Job{Job: api.NewJob(job)}
+			}
+
+			stream.Send(&api.StreamDeploymentEventsResponse{
+				Events: []*api.Event{apiEvent},
+			})
+		case <-stream.Context().Done():
+			err = stream.Context().Err()
+			return
+		}
+	}
+	return
 }
 
 func parseDeploymentTags(from map[string]*api.DeploymentProcessTags) map[string]map[string]string {

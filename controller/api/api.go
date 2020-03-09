@@ -770,3 +770,38 @@ func NewJob(from *ct.Job) *Job {
 		UpdateTime:     NewTimestamp(from.UpdatedAt),
 	}
 }
+
+func NewEventOp(from ct.EventOp) Event_EventOp {
+	switch from {
+	case ct.EventOpCreate:
+		return Event_CREATE
+	case ct.EventOpUpdate:
+		return Event_UPDATE
+	default:
+		return Event_ANY
+	}
+}
+
+func NewEvent(from *ct.Event) *Event {
+	var data isEvent_Data
+	switch from.ObjectType {
+	case "deployment":
+		data = Event_Deployment{
+			Deployment: nil, // TODO(jvatic): This needs to be an ExpandedDeployment
+		}
+	case "job":
+		data = Event_Job{
+			Job: nil, // TODO(jvatic): parse Job from ct.Event data
+		}
+	}
+
+	return &Event{
+		Parent:         parentName,
+		Name:           fmt.Sprintf("events/%d", from.ID),
+		DeploymentName: deploymentName,
+		Type:           from.ObjectType,
+		Op:             NewEventOp(from.Op),
+		CreateTime:     NewTimestamp(from.CreatedAt),
+		Data:           data,
+	}
+}

@@ -50,6 +50,15 @@ type ControllerStreamDeployments = {
   readonly responseType: typeof controller_pb.StreamDeploymentsResponse;
 };
 
+type ControllerStreamDeploymentEvents = {
+  readonly methodName: string;
+  readonly service: typeof Controller;
+  readonly requestStream: false;
+  readonly responseStream: true;
+  readonly requestType: typeof controller_pb.StreamDeploymentEventsRequest;
+  readonly responseType: typeof controller_pb.StreamDeploymentEventsResponse;
+};
+
 type ControllerUpdateApp = {
   readonly methodName: string;
   readonly service: typeof Controller;
@@ -86,15 +95,6 @@ type ControllerCreateDeployment = {
   readonly responseType: typeof controller_pb.Event;
 };
 
-type ControllerStreamDeploymentEvents = {
-  readonly methodName: string;
-  readonly service: typeof Controller;
-  readonly requestStream: false;
-  readonly responseStream: true;
-  readonly requestType: typeof controller_pb.StreamDeploymentEventsRequest;
-  readonly responseType: typeof controller_pb.Event;
-};
-
 export class Controller {
   static readonly serviceName: string;
   static readonly Status: ControllerStatus;
@@ -102,11 +102,11 @@ export class Controller {
   static readonly StreamReleases: ControllerStreamReleases;
   static readonly StreamScales: ControllerStreamScales;
   static readonly StreamDeployments: ControllerStreamDeployments;
+  static readonly StreamDeploymentEvents: ControllerStreamDeploymentEvents;
   static readonly UpdateApp: ControllerUpdateApp;
   static readonly CreateScale: ControllerCreateScale;
   static readonly CreateRelease: ControllerCreateRelease;
   static readonly CreateDeployment: ControllerCreateDeployment;
-  static readonly StreamDeploymentEvents: ControllerStreamDeploymentEvents;
 }
 
 export type ServiceError = { message: string, code: number; metadata: grpc.Metadata }
@@ -154,6 +154,7 @@ export class ControllerClient {
   streamReleases(requestMessage: controller_pb.StreamReleasesRequest, metadata?: grpc.Metadata): ResponseStream<controller_pb.StreamReleasesResponse>;
   streamScales(requestMessage: controller_pb.StreamScalesRequest, metadata?: grpc.Metadata): ResponseStream<controller_pb.StreamScalesResponse>;
   streamDeployments(requestMessage: controller_pb.StreamDeploymentsRequest, metadata?: grpc.Metadata): ResponseStream<controller_pb.StreamDeploymentsResponse>;
+  streamDeploymentEvents(requestMessage: controller_pb.StreamDeploymentEventsRequest, metadata?: grpc.Metadata): ResponseStream<controller_pb.StreamDeploymentEventsResponse>;
   updateApp(
     requestMessage: controller_pb.UpdateAppRequest,
     metadata: grpc.Metadata,
@@ -182,6 +183,5 @@ export class ControllerClient {
     callback: (error: ServiceError|null, responseMessage: controller_pb.Release|null) => void
   ): UnaryResponse;
   createDeployment(requestMessage: controller_pb.CreateDeploymentRequest, metadata?: grpc.Metadata): ResponseStream<controller_pb.Event>;
-  streamDeploymentEvents(requestMessage: controller_pb.StreamDeploymentEventsRequest, metadata?: grpc.Metadata): ResponseStream<controller_pb.Event>;
 }
 

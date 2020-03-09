@@ -21,11 +21,40 @@ func NewEventRepo(db *postgres.DB) *EventRepo {
 	return &EventRepo{db: db}
 }
 
-func (r *EventRepo) ListEvents(appIDs, objectTypes, objectIDs []string, beforeID *int64, sinceID *int64, count int) ([]*ct.Event, error) {
+type ListEventOptions struct {
+	PageToken     PageToken
+	AppIDs        []string
+	DeploymentIDs []string
+	ObjectIDs     []string
+	ObjectTypes   []ct.EventType
+}
+
+func (r *EventRepo) ListEvents(appIDs, objectTypeStrings, objectIDs []string, beforeID *int64, sinceID *int64, count int) ([]*ct.Event, error) {
+	objectTypes := make([]ct.EventType, len(objectTypeStrings))
+	for i, t := range objectTypeStrings {
+		objectTypes[i] = ct.EventType(t)
+	}
+	events, _, err := r.ListPage(ListEventOptions{
+		PageToken: PageToken{
+			CursorID: toEventsCursorID(beforeID, sinceID),
+			Size:     count,
+		},
+		AppIDs:      appIDs,
+		ObjectIDs:   objectIDs,
+		ObjectTypes: objectTypes,
+	})
+	return events, err
+}
+
+// TODO(jvatic): Move this into a prepared statement and forgo custom event
+// pagination (needs to return expanded deployment for type "deployment"),
+// restore old ListEvents
+func (r *EventRepo) ListPage(opts ListEventOptions) ([]*ct.Event, *PageToken, error) {
 	query := "SELECT event_id, app_id, object_id, object_type, data, op, created_at FROM events"
 	var conditions []string
 	var n int
 	args := []interface{}{}
+	beforeID, sinceID := opts.PageToken.EventsCursor()
 	if beforeID != nil {
 		n++
 		conditions = append(conditions, fmt.Sprintf("event_id < $%d", n))
@@ -36,52 +65,66 @@ func (r *EventRepo) ListEvents(appIDs, objectTypes, objectIDs []string, beforeID
 		conditions = append(conditions, fmt.Sprintf("event_id > $%d", n))
 		args = append(args, *sinceID)
 	}
-	if len(appIDs) > 0 {
+	if len(opts.AppIDs) > 0 {
 		n++
 		conditions = append(conditions, fmt.Sprintf("app_id::text = ANY($%d::text[])", n))
-		args = append(args, appIDs)
+		args = append(args, opts.AppIDs)
 	}
-	if len(objectTypes) > 0 {
+	if len(opts.DeploymentIDs) > 0 {
+		n++
+		conditions = append(conditions, fmt.Sprintf("deployment_id::text = ANY($%d::text[])", n))
+		args = append(args, opts.DeploymentIDs)
+	}
+	if len(opts.ObjectTypes) > 0 {
 		c := "("
-		for i, typ := range objectTypes {
+		for i, typ := range opts.ObjectTypes {
 			if i > 0 {
 				c += " OR "
 			}
 			n++
 			c += fmt.Sprintf("object_type = $%d", n)
-			args = append(args, typ)
+			args = append(args, string(typ))
 		}
 		c += ")"
 		conditions = append(conditions, c)
 	}
-	if len(objectIDs) > 0 {
+	if len(opts.ObjectIDs) > 0 {
 		n++
 		conditions = append(conditions, fmt.Sprintf("object_id = ANY($%d::text[])", n))
-		args = append(args, objectIDs)
+		args = append(args, opts.ObjectIDs)
 	}
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
 	query += " ORDER BY event_id DESC"
-	if count > 0 {
+	pageSize := opts.PageToken.Size
+	if pageSize > 0 {
 		n++
 		query += fmt.Sprintf(" LIMIT $%d", n)
-		args = append(args, count)
+		args = append(args, pageSize)
 	}
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 	var events []*ct.Event
 	for rows.Next() {
 		event, err := scanEvent(rows)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		events = append(events, event)
 	}
-	return events, rows.Err()
+	var nextPageToken *PageToken
+	if pageSize > 0 && len(events) == pageSize {
+		nextPageToken = &PageToken{
+			CursorID: toEventsCursorID(nil, &events[pageSize-1].ID),
+			Size:     pageSize,
+		}
+		events = events[0:pageSize]
+	}
+	return events, nextPageToken, rows.Err()
 }
 
 func (r *EventRepo) GetEvent(id int64) (*ct.Event, error) {
