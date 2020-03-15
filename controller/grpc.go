@@ -903,7 +903,6 @@ func (g *grpcAPI) listDeploymentEvents(req *api.StreamDeploymentEventsRequest) (
 	events := make([]*api.Event, len(ctEvents))
 	for i, e := range ctEvents {
 		events[i] = api.NewEvent(e)
-		apps = append(apps, api.NewApp(a))
 	}
 
 	return events, nextPageToken, nil
@@ -996,7 +995,6 @@ outer:
 			return
 		}
 	}
-	return
 }
 
 func parseDeploymentTags(from map[string]*api.DeploymentProcessTags) map[string]map[string]string {

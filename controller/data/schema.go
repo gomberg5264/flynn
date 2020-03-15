@@ -957,10 +957,11 @@ $$ LANGUAGE SQL;
 	migrations.Add(49, `
 ALTER TABLE http_routes ADD COLUMN disable_keep_alives boolean NOT NULL DEFAULT false;
 	`)
-	migrations.Add(51,
+	migrations.Add(50,
 		`ALTER TABLE events ADD COLUMN deployment_id uuid REFERENCES deployments (deployment_id)`,
 		// TODO(jvatic): associate all existing job events with a deployment
 		// TODO(jvatic): associate all existing scale events with a deployment
+		// TODO(jvatic): convert all event.data to an expadned deployment where it is a deployment
 	)
 }
 

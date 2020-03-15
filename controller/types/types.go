@@ -550,6 +550,18 @@ type Event struct {
 	CreatedAt    *time.Time      `json:"created_at,omitempty"`
 }
 
+type ExpandedEvent struct {
+	ID         int64               `json:"id,omitempty"`
+	AppID      string              `json:"app,omitempty"`
+	ObjectType EventType           `json:"object_type,omitempty"`
+	ObjectID   string              `json:"object_id,omitempty"`
+	UniqueID   string              `json:"-"`
+	Deployment *ExpandedDeployment `json:"deployment,omitempty"`
+	Job        *Job                `json:"job,omitempty"`
+	Op         EventOp             `json:"-"`
+	CreatedAt  *time.Time          `json:"created_at,omitempty"`
+}
+
 type ScaleRequest struct {
 	ID           string                        `json:"id"`
 	AppID        string                        `json:"app"`

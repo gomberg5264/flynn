@@ -49,6 +49,7 @@ var preparedStatements = map[string]string{
 	"event_insert":                          eventInsertQuery,
 	"event_insert_op":                       eventInsertOpQuery,
 	"event_insert_unique":                   eventInsertUniqueQuery,
+	"event_list_page":                       eventListPageQuery,
 	"formation_list_by_app":                 formationListByAppQuery,
 	"formation_list_by_release":             formationListByReleaseQuery,
 	"formation_list_active":                 formationListActiveQuery,
@@ -349,6 +350,53 @@ VALUES ($1, $2, $3, $4, $5, $6)`
 	eventInsertUniqueQuery = `
 INSERT INTO events (app_id, deployment_id, object_id, unique_id, object_type, data)
 VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (unique_id) DO NOTHING`
+	eventListPageQuery = `
+SELECT e.event_id, e.app_id, e.deployment_id, e.object_id, e.object_type, e.data, e.op, e.created_at,
+
+	d.deployment_id, d.app_id, d.old_release_id, d.new_release_id, d.strategy, deployment_status(d.deployment_id),
+  d.processes, d.tags, d.deploy_timeout, d.deploy_batch_size, d.created_at, d.finished_at,
+  ARRAY(
+    SELECT a.artifact_id
+    FROM release_artifacts a
+    WHERE a.release_id = old_r.release_id AND a.deleted_at IS NULL
+    ORDER BY a.index
+  ) AS old_artifact_ids, old_r.env, old_r.processes, old_r.meta, old_r.created_at,
+  ARRAY(
+    SELECT a.artifact_id
+    FROM release_artifacts a
+    WHERE a.release_id = new_r.release_id AND a.deleted_at IS NULL
+    ORDER BY a.index
+  ) AS new_artifact_ids, new_r.env, new_r.processes, new_r.meta, new_r.created_at,
+  d.type,
+
+  j.cluster_id, j.job_id, j.host_id, j.app_id, j.release_id, j.process_type, j.state, j.meta,
+  j.exit_status, j.host_error, j.run_at, j.restarts, j.created_at, j.updated_at, j.args,
+  ARRAY(
+    SELECT job_volumes.volume_id
+    FROM job_volumes
+    WHERE job_volumes.job_id = job_cache.job_id
+    ORDER BY job_volumes.index
+  )
+FROM events e
+LEFT OUTER JOIN deployments d
+	ON d.deployment_id = e.deployment_id
+LEFT OUTER JOIN releases old_r
+  ON d.old_release_id = old_r.release_id
+LEFT OUTER JOIN releases new_r
+  ON d.new_release_id = new_r.release_id
+LEFT OUTER JOIN job_cache j
+	ON e.object_type = 'job' AND j.job_id::text = e.object_id
+WHERE
+  CASE WHEN array_length($2::text[], 1) > 0 THEN e.app_id::text = ANY($2::text[]) ELSE true END
+AND
+	CASE WHEN array_length($3::text[], 1) > 0 THEN e.deployment_id::text = ANY($3::text[]) ELSE true END
+AND
+	CASE WHEN array_length($4::text[], 1) > 0 THEN e.object_type = ANY($4::text[]) ELSE true END
+AND
+	CASE WHEN $1::timestamptz IS NOT NULL THEN e.created_at <= $1::timestamptz ELSE true END
+ORDER BY e.created_at DESC
+LIMIT $5;
+	`
 	formationListByAppQuery = `
 SELECT app_id, release_id, processes, tags, created_at, updated_at
 FROM formations WHERE app_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC`

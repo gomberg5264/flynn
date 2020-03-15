@@ -21,40 +21,11 @@ func NewEventRepo(db *postgres.DB) *EventRepo {
 	return &EventRepo{db: db}
 }
 
-type ListEventOptions struct {
-	PageToken     PageToken
-	AppIDs        []string
-	DeploymentIDs []string
-	ObjectIDs     []string
-	ObjectTypes   []ct.EventType
-}
-
-func (r *EventRepo) ListEvents(appIDs, objectTypeStrings, objectIDs []string, beforeID *int64, sinceID *int64, count int) ([]*ct.Event, error) {
-	objectTypes := make([]ct.EventType, len(objectTypeStrings))
-	for i, t := range objectTypeStrings {
-		objectTypes[i] = ct.EventType(t)
-	}
-	events, _, err := r.ListPage(ListEventOptions{
-		PageToken: PageToken{
-			CursorID: toEventsCursorID(beforeID, sinceID),
-			Size:     count,
-		},
-		AppIDs:      appIDs,
-		ObjectIDs:   objectIDs,
-		ObjectTypes: objectTypes,
-	})
-	return events, err
-}
-
-// TODO(jvatic): Move this into a prepared statement and forgo custom event
-// pagination (needs to return expanded deployment for type "deployment"),
-// restore old ListEvents
-func (r *EventRepo) ListPage(opts ListEventOptions) ([]*ct.Event, *PageToken, error) {
+func (r *EventRepo) ListEvents(appIDs, objectTypes, objectIDs []string, beforeID *int64, sinceID *int64, count int) ([]*ct.Event, error) {
 	query := "SELECT event_id, app_id, object_id, object_type, data, op, created_at FROM events"
 	var conditions []string
 	var n int
 	args := []interface{}{}
-	beforeID, sinceID := opts.PageToken.EventsCursor()
 	if beforeID != nil {
 		n++
 		conditions = append(conditions, fmt.Sprintf("event_id < $%d", n))
@@ -65,66 +36,99 @@ func (r *EventRepo) ListPage(opts ListEventOptions) ([]*ct.Event, *PageToken, er
 		conditions = append(conditions, fmt.Sprintf("event_id > $%d", n))
 		args = append(args, *sinceID)
 	}
-	if len(opts.AppIDs) > 0 {
+	if len(appIDs) > 0 {
 		n++
 		conditions = append(conditions, fmt.Sprintf("app_id::text = ANY($%d::text[])", n))
-		args = append(args, opts.AppIDs)
+		args = append(args, appIDs)
 	}
-	if len(opts.DeploymentIDs) > 0 {
-		n++
-		conditions = append(conditions, fmt.Sprintf("deployment_id::text = ANY($%d::text[])", n))
-		args = append(args, opts.DeploymentIDs)
-	}
-	if len(opts.ObjectTypes) > 0 {
+	if len(objectTypes) > 0 {
 		c := "("
-		for i, typ := range opts.ObjectTypes {
+		for i, typ := range objectTypes {
 			if i > 0 {
 				c += " OR "
 			}
 			n++
 			c += fmt.Sprintf("object_type = $%d", n)
-			args = append(args, string(typ))
+			args = append(args, typ)
 		}
 		c += ")"
 		conditions = append(conditions, c)
 	}
-	if len(opts.ObjectIDs) > 0 {
+	if len(objectIDs) > 0 {
 		n++
 		conditions = append(conditions, fmt.Sprintf("object_id = ANY($%d::text[])", n))
-		args = append(args, opts.ObjectIDs)
+		args = append(args, objectIDs)
 	}
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
 	query += " ORDER BY event_id DESC"
-	pageSize := opts.PageToken.Size
-	if pageSize > 0 {
+	if count > 0 {
 		n++
 		query += fmt.Sprintf(" LIMIT $%d", n)
-		args = append(args, pageSize)
+		args = append(args, count)
 	}
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer rows.Close()
 	var events []*ct.Event
 	for rows.Next() {
 		event, err := scanEvent(rows)
 		if err != nil {
+			return nil, err
+		}
+		events = append(events, event)
+	}
+	return events, rows.Err()
+}
+
+type ListEventOptions struct {
+	PageToken     PageToken
+	AppIDs        []string
+	DeploymentIDs []string
+	ObjectTypes   []ct.EventType
+}
+
+func (r *EventRepo) ListPage(opts ListEventOptions) ([]*ct.ExpandedEvent, *PageToken, error) {
+	pageSize := DEFAULT_PAGE_SIZE
+	if opts.PageToken.Size > 0 {
+		pageSize = opts.PageToken.Size
+	}
+	objectTypes := make([]string, len(opts.ObjectTypes))
+	for i, t := range opts.ObjectTypes {
+		objectTypes[i] = string(t)
+	}
+	cursor, err := opts.PageToken.Cursor()
+	if err != nil {
+		return nil, nil, err
+	}
+	rows, err := r.db.Query("event_list_page", cursor, opts.AppIDs, opts.DeploymentIDs, objectTypes, pageSize+1)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	var events []*ct.ExpandedEvent
+	for rows.Next() {
+		event, err := scanExpandedEvent(rows)
+		if err != nil {
 			return nil, nil, err
 		}
 		events = append(events, event)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
 	var nextPageToken *PageToken
-	if pageSize > 0 && len(events) == pageSize {
+	if len(events) == pageSize+1 {
 		nextPageToken = &PageToken{
-			CursorID: toEventsCursorID(nil, &events[pageSize-1].ID),
+			CursorID: toCursorID(events[pageSize].CreatedAt),
 			Size:     pageSize,
 		}
 		events = events[0:pageSize]
 	}
-	return events, nextPageToken, rows.Err()
+	return events, nextPageToken, nil
 }
 
 func (r *EventRepo) GetEvent(id int64) (*ct.Event, error) {
@@ -156,6 +160,85 @@ func scanEvent(s postgres.Scanner) (*ct.Event, error) {
 	}
 	event.ObjectType = ct.EventType(typ)
 	event.Data = json.RawMessage(data)
+	return &event, nil
+}
+
+func scanExpandedEvent(s postgres.Scanner) (*ct.ExpandedEvent, error) {
+	// Event
+	var event ct.ExpandedEvent
+	var typ string
+	var appID *string
+	var op *string
+
+	// ExpandedDeployment
+	d := &ct.ExpandedDeployment{}
+	oldRelease := &ct.Release{}
+	newRelease := &ct.Release{}
+	var oldArtifactIDs string
+	var newArtifactIDs string
+	var oldReleaseID *string
+	var status *string
+
+	// Job
+	job := &ct.Job{}
+	var state string
+	var volumeIDs string
+
+	err := s.Scan(
+		// Event
+		&event.ID, &appID, &event.ObjectID, &typ, &op, &event.CreatedAt,
+
+		// ExpandedDeployment
+		&d.ID, &d.AppID, &oldReleaseID, &newRelease.ID, &d.Strategy, &status, &d.Processes, &d.Tags, &d.DeployTimeout, &d.DeployBatchSize, &d.CreatedAt, &d.FinishedAt,
+		&oldArtifactIDs, &oldRelease.Env, &oldRelease.Processes, &oldRelease.Meta, &oldRelease.CreatedAt,
+		&newArtifactIDs, &newRelease.Env, &newRelease.Processes, &newRelease.Meta, &newRelease.CreatedAt,
+		&d.Type,
+
+		// Job
+		&job.ID, &job.UUID, &job.HostID, &job.AppID, &job.ReleaseID, &job.Type, &state, &job.Meta, &job.ExitStatus, &job.HostError, &job.RunAt, &job.Restarts, &job.CreatedAt, &job.UpdatedAt, &job.Args, &volumeIDs,
+	)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			err = ErrNotFound
+		}
+		return nil, err
+	}
+
+	// Event
+	if appID != nil {
+		event.AppID = *appID
+	}
+	if op != nil {
+		event.Op = ct.EventOp(*op)
+	}
+	event.ObjectType = ct.EventType(typ)
+
+	// ExpandedDeployment
+	if oldReleaseID != nil {
+		oldRelease.ID = *oldReleaseID
+		oldRelease.AppID = d.AppID
+		if oldArtifactIDs != "" {
+			oldRelease.ArtifactIDs = splitPGStringArray(oldArtifactIDs)
+		}
+		d.OldRelease = oldRelease
+	}
+	if newArtifactIDs != "" {
+		newRelease.ArtifactIDs = splitPGStringArray(newArtifactIDs)
+	}
+	newRelease.AppID = d.AppID
+	d.NewRelease = newRelease
+	if status != nil {
+		d.Status = *status
+	}
+
+	if d.ID != "" {
+		event.Deployment = d
+	}
+
+	if job.UUID != "" {
+		event.Job = job
+	}
+
 	return &event, nil
 }
 

@@ -782,24 +782,32 @@ func NewEventOp(from ct.EventOp) Event_EventOp {
 	}
 }
 
-func NewEvent(from *ct.Event) *Event {
+func NewEvent(from *ct.ExpandedEvent) *Event {
 	var data isEvent_Data
+	var parentName string
 	switch from.ObjectType {
 	case "deployment":
-		data = Event_Deployment{
-			Deployment: nil, // TODO(jvatic): This needs to be an ExpandedDeployment
+		parentName = fmt.Sprintf("apps/%s/deployments/%s", from.AppID, from.Deployment.ID)
+		data = &Event_Deployment{
+			Deployment: NewExpandedDeployment(from.Deployment),
 		}
 	case "job":
-		data = Event_Job{
-			Job: nil, // TODO(jvatic): parse Job from ct.Event data
+		parentName = fmt.Sprintf("jobs/%s", from.ObjectID)
+		data = &Event_Job{
+			Job: NewJob(from.Job),
 		}
+	}
+
+	var deploymentName string
+	if from.Deployment != nil {
+		deploymentName = fmt.Sprintf("apps/%s/deployments/%s", from.AppID, from.Deployment.ID)
 	}
 
 	return &Event{
 		Parent:         parentName,
 		Name:           fmt.Sprintf("events/%d", from.ID),
 		DeploymentName: deploymentName,
-		Type:           from.ObjectType,
+		Type:           string(from.ObjectType),
 		Op:             NewEventOp(from.Op),
 		CreateTime:     NewTimestamp(from.CreatedAt),
 		Data:           data,
