@@ -351,7 +351,7 @@ VALUES ($1, $2, $3, $4, $5, $6)`
 INSERT INTO events (app_id, deployment_id, object_id, unique_id, object_type, data)
 VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (unique_id) DO NOTHING`
 	eventListPageQuery = `
-SELECT e.event_id, e.app_id, e.deployment_id, e.object_id, e.object_type, e.data, e.op, e.created_at,
+SELECT e.event_id, e.app_id, e.object_id, e.object_type, e.op, e.created_at,
 
 	d.deployment_id, d.app_id, d.old_release_id, d.new_release_id, d.strategy, deployment_status(d.deployment_id),
   d.processes, d.tags, d.deploy_timeout, d.deploy_batch_size, d.created_at, d.finished_at,
@@ -374,7 +374,7 @@ SELECT e.event_id, e.app_id, e.deployment_id, e.object_id, e.object_type, e.data
   ARRAY(
     SELECT job_volumes.volume_id
     FROM job_volumes
-    WHERE job_volumes.job_id = job_cache.job_id
+    WHERE job_volumes.job_id = j.job_id
     ORDER BY job_volumes.index
   )
 FROM events e

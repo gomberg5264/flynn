@@ -172,30 +172,42 @@ func scanExpandedEvent(s postgres.Scanner) (*ct.ExpandedEvent, error) {
 
 	// ExpandedDeployment
 	d := &ct.ExpandedDeployment{}
+	var deploymentID *string
+	var deploymentAppID *string
+	var deploymentStrategy *string
+	var deploymentStatus *string
+	var deploymentType *ct.ReleaseType
+	var deploymentTimeout *int32
 	oldRelease := &ct.Release{}
 	newRelease := &ct.Release{}
-	var oldArtifactIDs string
-	var newArtifactIDs string
+	var oldArtifactIDs *string
+	var newArtifactIDs *string
 	var oldReleaseID *string
-	var status *string
+	var newReleaseID *string
 
 	// Job
 	job := &ct.Job{}
-	var state string
-	var volumeIDs string
+	var jobID *string
+	var jobUUID *string
+	var jobHostID *string
+	var jobAppID *string
+	var jobReleaseID *string
+	var jobType *string
+	var jobState *string
+	var jobVolumeIDs *string
 
 	err := s.Scan(
 		// Event
 		&event.ID, &appID, &event.ObjectID, &typ, &op, &event.CreatedAt,
 
 		// ExpandedDeployment
-		&d.ID, &d.AppID, &oldReleaseID, &newRelease.ID, &d.Strategy, &status, &d.Processes, &d.Tags, &d.DeployTimeout, &d.DeployBatchSize, &d.CreatedAt, &d.FinishedAt,
+		&deploymentID, &deploymentAppID, &oldReleaseID, &newReleaseID, &deploymentStrategy, &deploymentStatus, &d.Processes, &d.Tags, &deploymentTimeout, &d.DeployBatchSize, &d.CreatedAt, &d.FinishedAt,
 		&oldArtifactIDs, &oldRelease.Env, &oldRelease.Processes, &oldRelease.Meta, &oldRelease.CreatedAt,
 		&newArtifactIDs, &newRelease.Env, &newRelease.Processes, &newRelease.Meta, &newRelease.CreatedAt,
-		&d.Type,
+		&deploymentType,
 
 		// Job
-		&job.ID, &job.UUID, &job.HostID, &job.AppID, &job.ReleaseID, &job.Type, &state, &job.Meta, &job.ExitStatus, &job.HostError, &job.RunAt, &job.Restarts, &job.CreatedAt, &job.UpdatedAt, &job.Args, &volumeIDs,
+		&jobID, &jobUUID, &jobHostID, &jobAppID, &jobReleaseID, &jobType, &jobState, &job.Meta, &job.ExitStatus, &job.HostError, &job.RunAt, &job.Restarts, &job.CreatedAt, &job.UpdatedAt, &job.Args, &jobVolumeIDs,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -214,21 +226,65 @@ func scanExpandedEvent(s postgres.Scanner) (*ct.ExpandedEvent, error) {
 	event.ObjectType = ct.EventType(typ)
 
 	// ExpandedDeployment
+	if deploymentID != nil {
+		d.ID = *deploymentID
+	}
+	if deploymentAppID != nil {
+		d.AppID = *deploymentAppID
+	}
 	if oldReleaseID != nil {
 		oldRelease.ID = *oldReleaseID
 		oldRelease.AppID = d.AppID
-		if oldArtifactIDs != "" {
-			oldRelease.ArtifactIDs = splitPGStringArray(oldArtifactIDs)
+		if oldArtifactIDs != nil && *oldArtifactIDs != "" {
+			oldRelease.ArtifactIDs = splitPGStringArray(*oldArtifactIDs)
 		}
 		d.OldRelease = oldRelease
 	}
-	if newArtifactIDs != "" {
-		newRelease.ArtifactIDs = splitPGStringArray(newArtifactIDs)
+	if newReleaseID != nil {
+		newRelease.ID = *newReleaseID
+		newRelease.AppID = d.AppID
+		if newArtifactIDs != nil && *newArtifactIDs != "" {
+			newRelease.ArtifactIDs = splitPGStringArray(*newArtifactIDs)
+		}
+		d.NewRelease = newRelease
 	}
-	newRelease.AppID = d.AppID
-	d.NewRelease = newRelease
-	if status != nil {
-		d.Status = *status
+	if deploymentStrategy != nil {
+		d.Strategy = *deploymentStrategy
+	}
+	if deploymentStatus != nil {
+		d.Status = *deploymentStatus
+	}
+	if deploymentType != nil {
+		d.Type = *deploymentType
+	}
+	if deploymentTimeout != nil {
+		d.DeployTimeout = *deploymentTimeout
+	}
+
+	// Job
+	if jobID != nil {
+		job.ID = *jobID
+	}
+	if jobUUID != nil {
+		job.UUID = *jobUUID
+	}
+	if jobHostID != nil {
+		job.HostID = *jobHostID
+	}
+	if jobAppID != nil {
+		job.AppID = *jobAppID
+	}
+	if jobReleaseID != nil {
+		job.ReleaseID = *jobReleaseID
+	}
+	if jobType != nil {
+		job.Type = *jobType
+	}
+	if jobState != nil {
+		job.State = ct.JobState(*jobState)
+	}
+	if jobVolumeIDs != nil && *jobVolumeIDs != "" {
+		job.VolumeIDs = splitPGStringArray(*jobVolumeIDs)
 	}
 
 	if d.ID != "" {

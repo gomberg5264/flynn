@@ -698,7 +698,10 @@ func NewExpandedDeployment(from *ct.ExpandedDeployment) *ExpandedDeployment {
 	if from.OldRelease != nil {
 		oldRelease = NewRelease(from.OldRelease)
 	}
-	newRelease := NewRelease(from.NewRelease)
+	var newRelease *Release
+	if from.NewRelease != nil {
+		newRelease = NewRelease(from.NewRelease)
+	}
 	return &ExpandedDeployment{
 		Name:          fmt.Sprintf("apps/%s/deployments/%s", from.AppID, from.ID),
 		OldRelease:    oldRelease,
@@ -783,15 +786,25 @@ func NewEventOp(from ct.EventOp) Event_EventOp {
 }
 
 func NewEvent(from *ct.ExpandedEvent) *Event {
+	if from == nil {
+		return nil
+	}
+
 	var data isEvent_Data
 	var parentName string
 	switch from.ObjectType {
 	case "deployment":
+		if from.Deployment == nil {
+			return nil
+		}
 		parentName = fmt.Sprintf("apps/%s/deployments/%s", from.AppID, from.Deployment.ID)
 		data = &Event_Deployment{
 			Deployment: NewExpandedDeployment(from.Deployment),
 		}
 	case "job":
+		if from.Job == nil {
+			return nil
+		}
 		parentName = fmt.Sprintf("jobs/%s", from.ObjectID)
 		data = &Event_Job{
 			Job: NewJob(from.Job),
