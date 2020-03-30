@@ -109,6 +109,10 @@ func CreateEvent(dbExec func(string, ...interface{}) error, e *ct.Event, data in
 		fields = append(fields, "unique_id")
 		args = append(args, e.UniqueID)
 	}
+	if e.DeploymentID != "" {
+		fields = append(fields, "deployment_id")
+		args = append(args, e.DeploymentID)
+	}
 	if e.Op != "" {
 		fields = append(fields, "op")
 		args = append(args, e.Op)

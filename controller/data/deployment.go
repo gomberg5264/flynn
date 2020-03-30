@@ -377,6 +377,7 @@ func createDeploymentEvent(dbExec func(string, ...interface{}) error, d *ct.Depl
 	}
 	return CreateEvent(dbExec, &ct.Event{
 		AppID:      d.AppID,
+		DeploymentID: d.ID,
 		ObjectID:   d.ID,
 		ObjectType: ct.EventTypeDeployment,
 		Op:         ct.EventOpCreate,

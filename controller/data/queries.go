@@ -339,7 +339,7 @@ ORDER BY d.created_at DESC
 LIMIT $6
 `
 	eventSelectQuery = `
-SELECT event_id, app_id, object_id, object_type, data, op, created_at
+SELECT event_id, app_id, deployment_id, object_id, object_type, data, op, created_at
 FROM events WHERE event_id = $1`
 	eventInsertQuery = `
 INSERT INTO events (app_id, object_id, object_type, data)

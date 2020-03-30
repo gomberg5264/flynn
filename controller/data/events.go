@@ -22,7 +22,7 @@ func NewEventRepo(db *postgres.DB) *EventRepo {
 }
 
 func (r *EventRepo) ListEvents(appIDs, objectTypes, objectIDs []string, beforeID *int64, sinceID *int64, count int) ([]*ct.Event, error) {
-	query := "SELECT event_id, app_id, object_id, object_type, data, op, created_at FROM events"
+	query := "SELECT event_id, app_id, deployment_id, object_id, object_type, data, op, created_at FROM events"
 	var conditions []string
 	var n int
 	args := []interface{}{}
@@ -141,8 +141,9 @@ func scanEvent(s postgres.Scanner) (*ct.Event, error) {
 	var typ string
 	var data []byte
 	var appID *string
+	var deploymentID *string
 	var op *string
-	err := s.Scan(&event.ID, &appID, &event.ObjectID, &typ, &data, &op, &event.CreatedAt)
+	err := s.Scan(&event.ID, &appID, &deploymentID, &event.ObjectID, &typ, &data, &op, &event.CreatedAt)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			err = ErrNotFound
@@ -151,6 +152,9 @@ func scanEvent(s postgres.Scanner) (*ct.Event, error) {
 	}
 	if appID != nil {
 		event.AppID = *appID
+	}
+	if deploymentID != nil {
+		event.DeploymentID = *deploymentID
 	}
 	if data == nil {
 		data = []byte("null")

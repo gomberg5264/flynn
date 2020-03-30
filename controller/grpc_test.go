@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"time"
+	"sync"
 
 	"github.com/flynn/flynn/controller/api"
 	"github.com/flynn/flynn/controller/data"
@@ -192,12 +193,12 @@ func (s *GRPCSuite) createTestDeploymentEvent(c *C, d *api.ExpandedDeployment, e
 	}, e), IsNil)
 }
 
-func (s *GRPCSuite) createTestJob(c *C, parentName string, release *api.Release) *api.Release {
-	ctRelease := release.ControllerType()
-	ctRelease.AppID = api.ParseIDFromName(parentName, "apps")
-	err := s.api.releaseRepo.Add(ctRelease)
-	c.Assert(err, IsNil)
-	return api.NewRelease(ctRelease)
+func (s *GRPCSuite) createTestJob(c *C, d *api.ExpandedDeployment, j *ct.Job) *ct.Job {
+	j.AppID = api.ParseIDFromName(d.Name, "apps")
+	j.DeploymentID = api.ParseIDFromName(d.Name, "deployments")
+	j.ReleaseID = api.ParseIDFromName(d.NewRelease.Name, "releases")
+	c.Assert(s.api.jobRepo.Add(j), IsNil)
+	return j
 }
 
 func (s *GRPCSuite) createTestArtifact(c *C, in *ct.Artifact) *ct.Artifact {
@@ -1303,26 +1304,43 @@ func (s *GRPCSuite) TestStreamDeploymentEvents(c *C) {
 	})
 	testDeployment1 := s.createTestDeployment(c, testRelease1.Name)
 
-	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
-	stream, err := s.grpc.StreamDeploymentEvents(ctx, &api.StreamDeploymentEventsRequest{
-		// NameFilters:   []string{testDeployment1.Name},
+	streamEvents := func (req *api.StreamDeploymentEventsRequest) (api.Controller_StreamDeploymentEventsClient, func (), error) {
+		ctx, _ := context.WithTimeout(context.Background(), 200*time.Millisecond)
+		stream, err := s.grpc.StreamDeploymentEvents(ctx, req)
+		var closeOnce sync.Once
+		closeFunc := func () {
+			closeOnce.Do(func () {
+				stream.CloseSend()
+			})
+		}
+		return stream, closeFunc, err
+	}
+
+	stream, closeFunc, err := streamEvents(&api.StreamDeploymentEventsRequest{
+		NameFilters:   []string{testDeployment1.Name},
 		StreamCreates: true,
 	})
-	defer stream.CloseSend()
+	defer closeFunc()
 
 	// we don't care about existing events
-	// _, err = stream.Recv()
-	// c.Assert(err, IsNil)
+	res, err := stream.Recv()
+	c.Assert(err, IsNil)
 
 	s.createTestDeploymentEvent(c, testDeployment1, &ct.DeploymentEvent{Status: "pending"})
-	res, err := stream.Recv()
+	res, err = stream.Recv()
 	c.Assert(err, IsNil)
 	c.Assert(len(res.Events), Equals, 1)
 	c.Assert(res.Events[0].Parent, Equals, testDeployment1.Name)
 	c.Assert(res.Events[0].DeploymentName, Equals, testDeployment1.Name)
 	c.Assert(res.Events[0].Type, Equals, string(ct.EventTypeDeployment))
 
-	// TODO(jvatic): create job event
+	s.createTestJob(c, testDeployment1, &ct.Job{})
+	res, err = stream.Recv()
+	c.Assert(err, IsNil)
+	c.Assert(len(res.Events), Equals, 1)
+	c.Assert(res.Events[0].Parent, Equals, testDeployment1.Name)
+	c.Assert(res.Events[0].DeploymentName, Equals, testDeployment1.Name)
+	c.Assert(res.Events[0].Type, Equals, string(ct.EventTypeJob))
 
 	// TODO(jvatic): test streaming events with app id
 	// TODO(jvatic): test streaming events with deployment id and app id
