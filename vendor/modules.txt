@@ -191,7 +191,7 @@ github.com/mitchellh/go-homedir
 github.com/mrunalp/fileutils
 # github.com/olekukonko/ts v0.0.0-20140412220145-ecf753e7c962
 github.com/olekukonko/ts
-# github.com/opencontainers/runc v1.0.0-rc8 => github.com/flynn/runc v1.0.0-rc1001
+# github.com/opencontainers/runc v1.0.0-rc95 => github.com/flynn/runc v1.0.0-rc1001
 github.com/opencontainers/runc/libcontainer
 github.com/opencontainers/runc/libcontainer/apparmor
 github.com/opencontainers/runc/libcontainer/cgroups
